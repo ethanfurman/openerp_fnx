@@ -1,3 +1,5 @@
+import ir_model
+
 class Normalize(object):
     """Adds support for normalizing character fields.
     

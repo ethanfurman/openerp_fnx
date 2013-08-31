@@ -16,5 +16,5 @@
         ],
     'test': [],
     'installable': True,
-    'active': True,
+    'active': False,
 }
