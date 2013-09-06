@@ -54,19 +54,11 @@ class BBxRec(object):
         if isinstance(ref, (int, long)):
             ref, mask = self.fieldlist[ref][3:5]
             ref = [ref]
-            if mask and ',0)' not in mask:
-                masks = ["%%%s.%sf" % tuple(mask[1:-1].split(','))]
-            else:
-                masks = ['%s']
+            masks = [mask]
             single = True
         elif isinstance(ref, slice):
             ref = [r[3] for r in self.fieldlist[ref]]
             masks = [r[4] for r in self.fieldlist[ref]]
-            for i, mask in enumerate(masks):
-                if mask and ',0)' not in mask:
-                    masks[i] = ["%%%s.%sf" % tuple(mask[1:-1].split(','))]
-                else:
-                    masks[i] = ['%s']
             single = False
         else:
             ref = ref.title()
@@ -77,13 +69,16 @@ class BBxRec(object):
             else:
                 raise ValueError('%s is not a valid field' % ref)
             ref = [ref]
-            if mask and ',0)' not in mask:
-                masks = ["%%%s.%sf" % tuple(mask[1:-1].split(','))]
-            else:
-                masks = ['%s']
+            masks = [mask]
             single = True
         result = []
         for r, m in zip(ref, masks):
+            if m and ',0' in m:
+                cls = int
+            elif m:
+                cls = float
+            else:
+                cls = str
             if r in self.datamap:
                 var, sub = r, ''
             else:
@@ -97,12 +92,7 @@ class BBxRec(object):
                 sub = sub[:-1]
                 first,last = [ int(x) for x in sub.split(",") ]
                 val = val[first-1:first+last-1]
-            if 'f' in m:
-                try:
-                    val = float(val)
-                except ValueError:
-                    m = '<%s>'
-            result.append((m % val).strip())
+            result.append(cls(val))
         if single:
             return result[0]
         return result
