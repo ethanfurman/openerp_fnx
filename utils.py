@@ -1012,6 +1012,78 @@ def Sift(*fields):
 _memory_sentinel = Sentinel("amnesiac")
 
 
+class xrange():
+    '''
+    accepts arbitrary objects to use to produce sequences
+    '''
+
+    types = {
+            int :    {
+                     'start' : 0,
+                     'step'  : 1,
+                     },
+            float :  {
+                     'start' : 0.0,
+                     'step'  : 1.0,
+                     },
+            date :   {
+                     'start' : None,
+                     'step'  : timedelta(1), # 1 day
+                     },
+            Decimal: {'start' : 0,
+                      'step'  : 1.0,
+                     }
+            }
+    
+    def __init__(yo, start, stop=None, step=None, count=None):
+        if stop is not None and count is not None:
+            raise TypeError("cannot specify both stop and count")
+        if stop is None and count is None:    # check for default start based on type
+            start, stop = None, start
+            for t in yo.types:
+                if isinstance(stop, t):
+                    start = yo.types[t]['start']
+                    break
+            else:
+                raise TypeError("start must be specified for unknown type %r" % stop.__class__)
+            if start is None:
+                raise TypeError("start must be specified for type %r" % stop.__class__)
+        if step is None:
+            step = yo.types[type(stop)]['step']
+
+        yo.start = yo.init_start = start
+        yo.count = yo.init_count = count
+        yo.stop = stop
+        yo.step = step
+        yo.reverse = stop is not None and stop < start
+
+    def __iter__(yo):
+        return yo
+
+    def __next__(yo):
+        if not yo.reverse:
+            if (yo.count is not None and yo.count < 1
+            or  yo.stop is not None and yo.start >= yo.stop):   # all done!
+                raise StopIteration
+        else:
+            if (yo.count is not None and yo.count < 1
+            or  yo.start <= yo.stop):   # all done!
+                raise StopIteration
+        current = yo.start
+        if callable(yo.step):   # custom function?
+            yo.start = yo.step(yo.start)
+        else:
+            yo.start = yo.start + yo.step
+        if yo.count is not None:
+            yo.count -= 1
+        return current
+    next = __next__
+
+    def __repr__(yo):
+        values = [ '%s=%s' % (k,v) for k,v in (('start',yo.start), ('stop',yo.stop), ('step', yo.step), ('count', yo.count)) if v is not None ]
+        return '<%s(%s)>' % (yo.__class__.__name__, ', '.join(values))
+
+
 class Memory(object):
     """
     allows attribute and item lookup
