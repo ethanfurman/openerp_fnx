@@ -229,6 +229,12 @@ class BBxFile(object):
                 pieces.append("%s=%r" % (attr, value))
         return "BBxFile(%s)" % (', '.join(pieces) + "[%d records]" % len(self.records))
 
+    def get(self, ky, sentinel=None):
+        try:
+            return self[ky]
+        except KeyError:
+            return sentinel
+
     def get_subset(self, ky):
         if not self.subset:
             raise ValueError('subset not defined')
