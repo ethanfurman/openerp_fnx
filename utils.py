@@ -3,7 +3,9 @@ import datetime
 import smtplib
 import string
 import syslog
+from datetime import date, timedelta
 from dbf import Date, Time
+from decimal import Decimal
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -17,7 +19,7 @@ except NameError:
 String = str, unicode
 Integer = int, long
 
-one_day = datetime.timedelta(1)
+one_day = timedelta(1)
 
 spelled_out_numbers = set(['ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE','TEN'])
 
@@ -1028,7 +1030,7 @@ class xrange():
                      },
             date :   {
                      'start' : None,
-                     'step'  : timedelta(1), # 1 day
+                     'step'  : one_day,
                      },
             Decimal: {'start' : 0,
                       'step'  : 1.0,
