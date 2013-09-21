@@ -24,7 +24,7 @@ def slicendice(line, *nums):
 def parse_FIS_Schema(source):
     iolist = None    
     contents = open(source).readlines()
-    FIS_TABLES = {}
+    TABLES = {}
     skip_table = False
     for line in contents:
         line = line.rstrip()
@@ -37,7 +37,7 @@ def parse_FIS_Schema(source):
             continue
         elif line[:15].strip() == '':
             continue    # skip commenting lines
-        elif line.startswith(FIS_PROBLEMS):
+        elif line.startswith(PROBLEM_TABLES):
             skip_table = True
         elif line.startswith('FC'):
             skip_table = False
@@ -45,23 +45,23 @@ def parse_FIS_Schema(source):
             parts = line[9:].rsplit(" (", 1)
             desc = parts[0].strip()
             if parts[1].startswith('at '):
-                if name in FIS_TABLES:
+                if name in TABLES:
                     # skip duplicate tables
                     skip_table = True
                     continue
-                fields = FIS_TABLES.setdefault(name, {'name':name, 'desc':desc, 'filenum':None, 'fields':[], 'iolist':[], 'key':None})['fields']
-                iolist = FIS_TABLES[name]['iolist']
+                fields = TABLES.setdefault(name, {'name':name, 'desc':desc, 'filenum':None, 'fields':[], 'iolist':[], 'key':None})['fields']
+                iolist = TABLES[name]['iolist']
                 table_id = name
                 filenum = ''
             else:
                 filenum = int(parts[1].split()[0])
-                fields = FIS_TABLES.setdefault(filenum, {'name':name, 'desc':desc, 'filenum':filenum, 'fields':[], 'iolist':[], 'key':None})['fields']
+                fields = TABLES.setdefault(filenum, {'name':name, 'desc':desc, 'filenum':filenum, 'fields':[], 'iolist':[], 'key':None})['fields']
                 
-                if name in FIS_TABLES:
-                    del FIS_TABLES[name]    # only allow names if there aren't any duplicates
+                if name in TABLES:
+                    del TABLES[name]    # only allow names if there aren't any duplicates
                 else:
-                    FIS_TABLES[name] = FIS_TABLES[filenum]
-                iolist = FIS_TABLES[filenum]['iolist']
+                    TABLES[name] = TABLES[filenum]
+                iolist = TABLES[filenum]['iolist']
                 table_id = filenum
         else:   # should start with a field number...
             fieldnum, fielddesc, fieldsize, rest = slicendice(line, 10, 50, 56)
@@ -73,6 +73,8 @@ def parse_FIS_Schema(source):
             else:
                 if '#' in rest[-1]:
                     fieldmask = rest.pop()
+                    if rest and (table_id, rest[0].lower()) in NUMERICAL_FIELDS_AS_TEXT:
+                        fieldmask = ''
                     if not rest:
                         rest.append('Fld%02d' % int(fieldnum))
                 else:
@@ -105,9 +107,9 @@ def parse_FIS_Schema(source):
                 if len(token) < length:
                     length = len(token)
                 stop = start + length
-                # or FIS_TABLES[name] . . .
-                FIS_TABLES[table_id]['key'] = token, start, stop
-    return FIS_TABLES
+                # or TABLES[name] . . .
+                TABLES[table_id]['key'] = token, start, stop
+    return TABLES
 
 
 DATACACHE = {}
@@ -118,7 +120,7 @@ def fisData (table, keymatch=None, subset=None, filter=None):
         table_id = tables[table]['name']
     tablename = tables[table_id]['name']
     key = table_id, keymatch, subset, filter
-    datafile = FIS_DATA/CID+tablename[:4]
+    datafile = DATA/CID+tablename[:4]
     mtime = os.stat(datafile).st_mtime
     if key in DATACACHE:
         table, old_mtime = DATACACHE[key]
@@ -132,7 +134,7 @@ def fisData (table, keymatch=None, subset=None, filter=None):
     DATACACHE[key] = table, mtime
     return table
 
-tables = parse_FIS_Schema(FIS_SCHEMAS)
+tables = parse_FIS_Schema(SCHEMA)
 
 #tables['NVTY1']['fields'][77]
 
