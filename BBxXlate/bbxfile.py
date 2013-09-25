@@ -2,7 +2,11 @@
 Bbx File utilities.
 """
 
-import os, string
+import logging
+import os
+import string
+
+_logger = logging.getLogger('BBx')
 
 def asc(strval):                    ##USED in bbxfile
     if len(strval) == 0:
@@ -96,7 +100,12 @@ class BBxRec(object):
                 sub = sub[:-1]
                 first,last = [ int(x) for x in sub.split(",") ]
                 val = val[first-1:first+last-1]
-            result.append(cls(val))
+            try:
+                result.append(cls(val))
+            except Exception:
+                _logger.error(repr(self))
+                _logger.exception('unable to convert, data lost')
+                result.append(cls())
         if single:
             return result[0]
         return result
