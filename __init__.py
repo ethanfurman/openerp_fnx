@@ -1,3 +1,5 @@
+from VSS import dbf, path
+from VSS.utils import *
 import ir_model
 
 class Normalize(object):
@@ -34,10 +36,15 @@ def check_company_settings(obj, cr, uid, *args):
     company = obj.pool.get('res.company')
     company = company.browse(cr, uid, company.search(cr, uid, [(1,'=',1)]))[0]
     values = {}
-    for setting, error_name, error_msg in args:
-        values[setting] = company[setting]
-        if not values[setting]:
-            raise ValueError(error_msg % error_name)
+    if isinstance(args[0][0], tuple):
+        all_args = args
+    else:
+        all_args = (args, )
+    for args in all_args:
+        for setting, error_name, error_msg in args:
+            values[setting] = company[setting]
+            if not values[setting]:
+                raise ValueError(error_msg % error_name)
     return values
 
 def strip_whitespace(fields):

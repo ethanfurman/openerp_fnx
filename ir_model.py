@@ -8,7 +8,7 @@ class ir_model_data(osv.Model):
     _name = 'ir.model.data'
     _inherit = 'ir.model.data'
 
-    @tools.ormcache()
+    #@tools.ormcache()
     def _get_id_via_resid(self, cr, uid, model, res_id):
         """
         Returns id of the ir.model.data record corresponding to a given
@@ -20,7 +20,7 @@ class ir_model_data(osv.Model):
         # the sql constraints ensure us we have only one result
         return ids[0]
 
-    @tools.ormcache()
+    #@tools.ormcache()
     def get_model_records(self, cr, uid, model):
         """
         Returns the ids of the ir.model.data records corresponding to a
@@ -32,7 +32,7 @@ class ir_model_data(osv.Model):
             return []
         return self.browse(cr, uid, ids)
         
-    @tools.ormcache()
+    #@tools.ormcache()
     def get_object_reference_from_model_resid(self, cr, uid, model, res_id):
         """
         Returns (module, xml_id) corresponding to a given model and res_id (cached)

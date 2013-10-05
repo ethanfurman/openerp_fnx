@@ -13,9 +13,11 @@ def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
     we're looking; otherwise we return ''.
 
     arg = (module_name, module_label, error_message)
+      or
+    arg = ((module1_name, module1_label, error_message1), (module2_name, module2_label, error_message2), ...)
     """
     settings = check_company_settings(obj, cr, uid, arg)
-    module = settings[arg[0]]
+    modules = set(settings.values())
     model = obj._name
     imd = obj.pool.get('ir.model.data')
     ids = set(ids)
@@ -25,7 +27,7 @@ def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
         imd_records[rec.res_id] = rec
     for id in ids:
         rec = imd_records.get(id)
-        if rec is not None and rec.module == module:
+        if rec is not None and rec.module in modules:
                 result[id]['xml_id'] = rec.name
                 result[id]['module'] = rec.module
         else:
@@ -35,20 +37,24 @@ def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
 
 def update_xml_id(obj, cr, uid, id, field_name, field_value, arg, context=None):
     """one record at a time"""
+    if not field_value:
+        return True
+        raise ValueError('Empty values are not allowed for field %r' % field_name)
     if context is None:
         context = {}
-    if field_name == 'module':
-        return True
+    if field_name == 'xml_id':
+        field_name = 'name'
     model = obj._name
-    settings = check_company_settings(obj, cr, uid, arg)
-    module = settings[arg[0]]
     imd = obj.pool.get('ir.model.data')
     try:
         rec = imd.get_object_from_model_resid(cr, uid, model, id, context=context)
     except ValueError:
-        imd.create(cr, uid, {'model':model, 'res_id':id, 'module':module, 'name':field_value}, context=context)
+        values = {'model':model, 'res_id':id, field_name:field_value}
+        if field_name != 'name':
+            values['name'] = ''
+        imd.create(cr, uid, values, context=context)
     else:
-        imd.write(cr, uid, rec.id, {'model':model, 'res_id':id, 'module':module, 'name':field_value}, context=context)
+        imd.write(cr, uid, rec.id, {field_name:field_value}, context=context)
     return True
 
 def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
