@@ -1,4 +1,4 @@
-from VSS import dbf, path, utils, BBxXlate
+from VSS import dbf, enum, path, utils, BBxXlate
 from VSS.utils import *
 import ir_model
 import sys
