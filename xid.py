@@ -3,6 +3,18 @@
 from collections import defaultdict
 from fnx import check_company_settings
 
+class xmlid(object):
+    def create(self, cr, uid, values, context=None):
+        xml_id = values.pop('xml_id', None)
+        module = values.pop('module', None)
+        if sum(1 for k in (xml_id, module) if k) == 1:
+            raise ValueError('if one of (xml_id, module) is set, both must be (%r, %r)' % (xml_id, module))
+        new_id = super(xmlid, self).create(cr, uid, values, context=context)
+        if xml_id and module:
+            imd = self.pool.get('ir.model.data')
+            imd.create(cr, uid, {'module':module, 'name':xml_id, 'model':self._name, 'res_id':new_id}, context=context)
+        return new_id
+
 
 def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
     """
@@ -35,10 +47,7 @@ def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
 def update_xml_id(obj, cr, uid, id, field_name, field_value, arg, context=None):
     """one record at a time"""
     if not field_value:
-        return True
         raise ValueError('Empty values are not allowed for field %r' % field_name)
-    if context is None:
-        context = {}
     if field_name == 'xml_id':
         field_name = 'name'
     model = obj._name
@@ -60,29 +69,30 @@ def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
     domain[0][1] = 'ilike', 'not ilike', '=', '!='
     domain[0][2] = 'some text to compare against'
     """
-    if not len(domain):
+    if not domain:
         return []
     if field_name == 'xml_id':
         field_name = 'name'
     imd = obj.pool.get('ir.model.data')
     model = obj._name
-    modules = set(['F33', 'F65', 'F163', 'FIS_now', 'FIS_unfi'])
     records = imd.get_model_records(cr, uid, model)
     (field, op, text) ,= domain
     if text:
         itext = text.lower()
     if op == 'ilike':
-        id_names = [(r.res_id, r[field_name]) for r in records if itext in r[field_name].lower() and r.module in modules]
+        id_names = [(r.res_id, r[field_name]) for r in records if itext in r[field_name].lower()]
     elif op == 'not ilike':
-        id_names = [(r.res_id, r[field_name]) for r in records if itext not in r[field_name].lower() and r.module in modules]
+        id_names = [(r.res_id, r[field_name]) for r in records if itext not in r[field_name].lower()]
     elif op == '=' and text is False:
         print 'not set'
-        id_names = [(r.res_id, r[field_name]) for r in records if r[field_name] is False or r.module not in modules]
+        id_names = [(r.res_id, r[field_name]) for r in records if r[field_name] is False]
         print id_names
     elif op == '=':
-        id_names = [(r.res_id, r[field_name]) for r in records if text == r[field_name] and r.module in modules]
+        id_names = [(r.res_id, r[field_name]) for r in records if text == r[field_name]]
+    elif op == '!=' and text is False:
+        id_names = [(r.res_id, r[field_name]) for r in records if r[field_name]]
     elif op == '!=':
-        id_names = [(r.res_id, r[field_name]) for r in records if text != r[field_name] and r.module in modules]
+        id_names = [(r.res_id, r[field_name]) for r in records if text != r[field_name]]
     else:
         raise ValueError('invalid op for external_id: %s' % op)
     return [('id', 'in', [x[0] for x in id_names])]
