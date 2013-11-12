@@ -10,11 +10,9 @@ def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
 
     It is entirely possible that any given model/res_id will have more than one
     module/name match, but we only return matches where module equals the module
-    we're looking; otherwise we return ''.
+    we're looking for; otherwise we return ''.
 
-    arg = (module_name, module_label, error_message)
-      or
-    arg = ((module1_name, module1_label, error_message1), (module2_name, module2_label, error_message2), ...)
+    arg = (module_name1, module_name2, ..., module_nameN)
     """
     modules = set(arg or '')
     model = obj._name
@@ -53,7 +51,6 @@ def update_xml_id(obj, cr, uid, id, field_name, field_value, arg, context=None):
             values['name'] = ''
         imd.create(cr, uid, values, context=context)
     else:
-        print field_name, field_value, context
         imd.write(cr, uid, rec.id, {field_name:field_value}, context=context)
     return True
 
@@ -73,14 +70,16 @@ def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
     (field, op, text) ,= domain
     if field == 'xml_id':
         field = 'name'
-    try:
+    if text:
         itext = text.lower()
-    except AttributeError:
-        pass
     if op == 'ilike':
         id_names = [(r.res_id, r[field_name]) for r in records if itext in r[field_name].lower()]
     elif op == 'not ilike':
         id_names = [(r.res_id, r[field_name]) for r in records if itext not in r[field_name].lower()]
+    elif op == '=' and text is False:
+        print 'not set'
+        id_names = [(r.res_id, r[field_name]) for r in records if r[field_name] is False or r.module not in modules]
+        print id_names
     elif op == '=':
         id_names = [(r.res_id, r[field_name]) for r in records if text == r[field_name]]
     elif op == '!=':
