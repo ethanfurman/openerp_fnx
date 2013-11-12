@@ -16,8 +16,7 @@ def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
       or
     arg = ((module1_name, module1_label, error_message1), (module2_name, module2_label, error_message2), ...)
     """
-    settings = check_company_settings(obj, cr, uid, arg)
-    modules = set(settings.values())
+    modules = set(arg or '')
     model = obj._name
     imd = obj.pool.get('ir.model.data')
     ids = set(ids)
@@ -54,6 +53,7 @@ def update_xml_id(obj, cr, uid, id, field_name, field_value, arg, context=None):
             values['name'] = ''
         imd.create(cr, uid, values, context=context)
     else:
+        print field_name, field_value, context
         imd.write(cr, uid, rec.id, {field_name:field_value}, context=context)
     return True
 
@@ -71,7 +71,12 @@ def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
     model = obj._name
     records = imd.get_model_records(cr, uid, model)
     (field, op, text) ,= domain
-    itext = text.lower()
+    if field == 'xml_id':
+        field = 'name'
+    try:
+        itext = text.lower()
+    except AttributeError:
+        pass
     if op == 'ilike':
         id_names = [(r.res_id, r[field_name]) for r in records if itext in r[field_name].lower()]
     elif op == 'not ilike':
@@ -80,6 +85,14 @@ def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
         id_names = [(r.res_id, r[field_name]) for r in records if text == r[field_name]]
     elif op == '!=':
         id_names = [(r.res_id, r[field_name]) for r in records if text != r[field_name]]
+    elif op == 'in':
+        print field_name
+        print repr(text)
+        id_names = [(r.res_id, r[field_name]) for r in records if r[field_name] in text]
+        print (22133,'vnms') in id_names
+        print id_names[:10]
+    elif op == 'not in':
+        id_names = [(r.res_id, r[field_name]) for r in records if r[field_name] not in text]
     else:
         raise ValueError('invalid op for external_id: %s' % op)
     return [('id', 'in', [x[0] for x in id_names])]
