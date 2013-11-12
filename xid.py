@@ -10,14 +10,11 @@ def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
 
     It is entirely possible that any given model/res_id will have more than one
     module/name match, but we only return matches where module equals the module
-    we're looking; otherwise we return ''.
+    we're looking for; otherwise we return ''.
 
-    arg = (module_name, module_label, error_message)
-      or
-    arg = ((module1_name, module1_label, error_message1), (module2_name, module2_label, error_message2), ...)
+    arg = (module_name1, module_name2, ..., module_nameN)
     """
-    settings = check_company_settings(obj, cr, uid, arg)
-    modules = set(settings.values())
+    modules = set(arg or '')
     model = obj._name
     imd = obj.pool.get('ir.model.data')
     ids = set(ids)
@@ -69,17 +66,23 @@ def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
         field_name = 'name'
     imd = obj.pool.get('ir.model.data')
     model = obj._name
+    modules = set(['F33', 'F65', 'F163', 'FIS_now', 'FIS_unfi'])
     records = imd.get_model_records(cr, uid, model)
     (field, op, text) ,= domain
-    itext = text.lower()
+    if text:
+        itext = text.lower()
     if op == 'ilike':
-        id_names = [(r.res_id, r[field_name]) for r in records if itext in r[field_name].lower()]
+        id_names = [(r.res_id, r[field_name]) for r in records if itext in r[field_name].lower() and r.module in modules]
     elif op == 'not ilike':
-        id_names = [(r.res_id, r[field_name]) for r in records if itext not in r[field_name].lower()]
+        id_names = [(r.res_id, r[field_name]) for r in records if itext not in r[field_name].lower() and r.module in modules]
+    elif op == '=' and text is False:
+        print 'not set'
+        id_names = [(r.res_id, r[field_name]) for r in records if r[field_name] is False or r.module not in modules]
+        print id_names
     elif op == '=':
-        id_names = [(r.res_id, r[field_name]) for r in records if text == r[field_name]]
+        id_names = [(r.res_id, r[field_name]) for r in records if text == r[field_name] and r.module in modules]
     elif op == '!=':
-        id_names = [(r.res_id, r[field_name]) for r in records if text != r[field_name]]
+        id_names = [(r.res_id, r[field_name]) for r in records if text != r[field_name] and r.module in modules]
     else:
         raise ValueError('invalid op for external_id: %s' % op)
     return [('id', 'in', [x[0] for x in id_names])]
