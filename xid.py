@@ -84,9 +84,7 @@ def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
     elif op == 'not ilike':
         id_names = [(r.res_id, r[field_name]) for r in records if itext not in r[field_name].lower()]
     elif op == '=' and text is False:
-        print 'not set'
         id_names = [(r.res_id, r[field_name]) for r in records if r[field_name] is False]
-        print id_names
     elif op == '=':
         id_names = [(r.res_id, r[field_name]) for r in records if text == r[field_name]]
     elif op == '!=' and text is False:
