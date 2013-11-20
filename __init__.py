@@ -61,3 +61,12 @@ def strip_whitespace(fields):
         if isinstance(value, (str, unicode)):
             fields[fld] = value.strip()
 
+def get_user_timezone(obj, cr, uid, user_ids=None, context=None):
+    if not user_ids:
+        user_ids = [uid]
+    result = {}
+    res_users = obj.pool.get('res.users')
+    users = res_users.browse(cr, uid, user_ids, context=context)
+    for user in users:
+        result[user.id] = user.tz or 'UTC'
+    return result
