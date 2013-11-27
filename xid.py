@@ -4,6 +4,7 @@ from collections import defaultdict
 from fnx import check_company_settings
 
 class xmlid(object):
+
     def create(self, cr, uid, values, context=None):
         xml_id = values.pop('xml_id', None)
         module = values.pop('module', None)
@@ -14,6 +15,17 @@ class xmlid(object):
             imd = self.pool.get('ir.model.data')
             imd.create(cr, uid, {'module':module, 'name':xml_id, 'model':self._name, 'res_id':new_id}, context=context)
         return new_id
+
+    def name_search(self, cr, uid, name='', args=None, operator='ilike', context=None, limit=100):
+        result = super(xmlid, self).name_search(cr, uid, name=name, args=args, operator=operator, context=context, limit=limit)
+        if not args:
+            args = []
+        ns_result = []
+        if name:
+            ids = self.search(cr, uid, [('xml_id','ilike',name.upper())] + args, limit=limit, context=context)
+            if ids:
+                ns_result = self.name_get(cr, uid, ids, context=context)
+        return list(set(result + ns_result))
 
 
 def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
