@@ -1,7 +1,6 @@
 "various OpenERP routines related to exposing fis ids stored in xml_id in ir.model.data"
 
 from collections import defaultdict
-from fnx import check_company_settings
 
 class xmlid(object):
 
@@ -81,6 +80,9 @@ def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
     domain[0][1] = 'ilike', 'not ilike', '=', '!='
     domain[0][2] = 'some text to compare against'
     """
+    print '\n', '-' * 50
+    print field_name, domain
+    print  '-' * 50, '\n'
     if not domain:
         return []
     if field_name == 'xml_id':
@@ -91,16 +93,18 @@ def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
     (field, op, text) ,= domain
     if text:
         itext = text.lower()
+    else:
+        id_names = [(r.res_id, r[field_name]) for r in records]
+        if op == '=':
+            return [('id', 'not in', [x[0] for x in id_names])]
+        else:
+            return [('id', 'in', [x[0] for x in id_names])]
     if op == 'ilike':
         id_names = [(r.res_id, r[field_name]) for r in records if itext in r[field_name].lower()]
     elif op == 'not ilike':
         id_names = [(r.res_id, r[field_name]) for r in records if itext not in r[field_name].lower()]
-    elif op == '=' and text is False:
-        id_names = [(r.res_id, r[field_name]) for r in records if r[field_name] is False]
     elif op == '=':
         id_names = [(r.res_id, r[field_name]) for r in records if text == r[field_name]]
-    elif op == '!=' and text is False:
-        id_names = [(r.res_id, r[field_name]) for r in records if r[field_name]]
     elif op == '!=':
         id_names = [(r.res_id, r[field_name]) for r in records if text != r[field_name]]
     else:
