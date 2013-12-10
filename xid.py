@@ -80,9 +80,6 @@ def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
     domain[0][1] = 'ilike', 'not ilike', '=', '!='
     domain[0][2] = 'some text to compare against'
     """
-    print '\n', '-' * 50
-    print field_name, domain
-    print  '-' * 50, '\n'
     if not domain:
         return []
     if field_name == 'xml_id':
