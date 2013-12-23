@@ -80,9 +80,6 @@ def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
     domain[0][1] = 'ilike', 'not ilike', '=', '!='
     domain[0][2] = 'some text to compare against'
     """
-    print '\n', '-' * 50
-    print field_name, domain
-    print  '-' * 50, '\n'
     if not domain:
         return []
     if field_name == 'xml_id':
@@ -91,9 +88,9 @@ def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
     model = obj._name
     records = imd.get_model_records(cr, uid, model)
     (field, op, text) ,= domain
-    if text:
+    if isinstance(text, (str, unicode)):
         itext = text.lower()
-    else:
+    elif isinstance(text, bool):
         id_names = [(r.res_id, r[field_name]) for r in records]
         if op == '=':
             return [('id', 'not in', [x[0] for x in id_names])]
@@ -107,6 +104,10 @@ def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
         id_names = [(r.res_id, r[field_name]) for r in records if text == r[field_name]]
     elif op == '!=':
         id_names = [(r.res_id, r[field_name]) for r in records if text != r[field_name]]
+    elif op == 'in':
+        id_names = [(r.res_id, r[field_name]) for r in records if r[field_name] in text]
+    elif op == 'not in':
+        id_names = [(r.res_id, r[field_name]) for r in records if r[field_name] not in text]
     else:
         raise ValueError('invalid op for external_id: %s' % op)
     return [('id', 'in', [x[0] for x in id_names])]
