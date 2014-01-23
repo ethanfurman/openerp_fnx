@@ -1,4 +1,4 @@
-from VSS import dbf, enum, path, utils, BBxXlate
+from VSS import dbf, enum, finance, path, utils, BBxXlate
 from VSS.utils import *
 import ir_model
 import sys
@@ -6,6 +6,7 @@ import sys
 # make dbf and path look like submodules of fnx so other modules can do `from fnx.path import Path'
 sys.modules['fnx.dbf'] = dbf
 sys.modules['fnx.enum'] = enum
+sys.modules['fnx.finance'] = finance
 sys.modules['fnx.path'] = path
 sys.modules['fnx.utils'] = utils
 sys.modules['fnx.BBxXlate'] = BBxXlate
