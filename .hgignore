@@ -1,7 +1,5 @@
-# use glob syntax.
 syntax: glob
-
-*.swp
 *.pyc
-*.orig
-*.txt.*
+.*.swp
+*~
+.*~
