@@ -63,15 +63,8 @@ def update_xml_id(obj, cr, uid, id, field_name, field_value, arg, context=None):
         field_name = 'name'
     model = obj._name
     imd = obj.pool.get('ir.model.data')
-    try:
-        rec = imd.get_object_from_model_resid(cr, uid, model, id, context=context)
-    except ValueError:
-        values = {'model':model, 'res_id':id, field_name:field_value}
-        if field_name != 'name':
-            values['name'] = ''
-        imd.create(cr, uid, values, context=context)
-    else:
-        imd.write(cr, uid, rec.id, {field_name:field_value}, context=context)
+    rec = imd.get_object_from_model_resid(cr, uid, model, id, context=context)
+    imd.write(cr, uid, rec.id, {field_name:field_value}, context=context)
     return True
 
 def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):
