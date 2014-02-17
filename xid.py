@@ -26,6 +26,26 @@ class xmlid(object):
                 ns_result = self.name_get(cr, uid, ids, context=context)
         return list(set(result + ns_result))
 
+    def write(self, cr, uid, ids, values, context=None):
+        if isinstance(ids, (int, long)):
+            ids = [ids]
+        xml_id = values.pop('xml_id', None)
+        module = values.pop('module', None)
+        given = sum(1 for k in (xml_id, module) if k)
+        if given == 1:
+            raise ValueError('if one of (xml_id, module) is set, both must be (%r, %r)' % (xml_id, module))
+        if given == 2:
+            if len(ids) > 1:
+                raise ValueError('(xml_id, module) pairs, if given, must be unique per record')
+            imd = self.pool.get('ir.model.data')
+            try:
+                record = imd.get_object_from_model_resid(cr, uid, model=self._name, res_id=ids[0])
+                imd.write(cr, uid, record.id, {'module':module, 'name':xml_id}, context=context)
+            except ValueError:
+                imd.create(cr, uid, {'model':self._name, 'res_id':ids[0], 'module':module, 'name':xml_id}, context=context)
+        super(xmlid, self).write(cr, uid, ids, values, context=context)
+        return True
+
 
 def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
     """
