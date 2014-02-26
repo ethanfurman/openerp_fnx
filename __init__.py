@@ -1,4 +1,5 @@
 from VSS import dbf, enum, finance, path, utils, BBxXlate
+from VSS.address import *
 from VSS.utils import *
 import ir_model
 import sys
