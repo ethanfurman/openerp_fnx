@@ -1,0 +1,103 @@
+#!/usr/bin/env python2.7
+
+from scription.api import *
+from VSS.openerp import get_records
+from VSS.path import Path
+from VSS.time_machine import PropertyDict
+import openerplib
+
+execfile('/etc/openerp/credentials')
+
+def connect(host, database, login, password):
+    OE = PropertyDict()
+    OE.conn = conn = openerplib.get_connection(hostname=host, database=database, login=login, password=password)
+    OE.res_country = conn.get_model('res.country')
+    OE.product_uom_categories = conn.get_model('product.uom.categ')
+    OE.product_uom = conn.get_model('product.uom')
+    return OE
+
+
+@Command()
+def fix_uom():
+    OE = connect(HOST, DB, USER, PW)
+    uom_categ = get_records(OE, 'product_uom_categories')
+    uom_categ = PropertyDict((cat.name.lower(), cat) for cat in uom_categ)
+    uom = get_records(OE, 'product_uom', domain=[('uom_type','=','reference')])
+    uom = PropertyDict((m.name.lower(), m) for m in uom)
+    if 'kg' not in uom:
+        raise ValueError("don't know how to link to %s" % uom_categ.weight.name)
+    if 'liter' not in uom and 'liter(s)' not in uom:
+        raise ValueError("don't know how to link to %s" % uom_categ.volume.name)
+    if not get_records(OE, 'product_uom', domain=[('name','=','lt')], max_qty=1):
+        OE.product_uom.create(dict(
+            name='lt',
+            full_name='long ton',
+            factor=0.000984207,
+            rounding=0.0000001,
+            uom_type='bigger',
+            active=True,
+            category_id=uom_categ.weight.id,
+            ))
+    if not get_records(OE, 'product_uom', domain=[('name','=','ton')], max_qty=1):
+        OE.product_uom.create(dict(
+            name='ton',
+            full_name='short ton',
+            factor=0.00110231,
+            rounding=0.0000001,
+            uom_type='bigger',
+            active=True,
+            category_id=uom_categ.weight.id,
+            ))
+    if not get_records(OE, 'product_uom', domain=[('name','=','lb')], max_qty=1):
+        OE.product_uom.create(dict(
+            name='lb',
+            full_name='Pound',
+            factor=2.20462,
+            rounding=0.0000001,
+            uom_type='smaller',
+            active=True,
+            category_id=uom_categ.weight.id,
+            ))
+    if not get_records(OE, 'product_uom', domain=[('name','=','oz')], max_qty=1):
+        OE.product_uom.create(dict(
+            name='oz',
+            full_name='ounce',
+            factor=35.274,
+            rounding=0.0000001,
+            uom_type='smaller',
+            active=True,
+            category_id=uom_categ.weight.id,
+            ))
+    if not get_records(OE, 'product_uom', domain=[('name','=','ga')], max_qty=1):
+        OE.product_uom.create(dict(
+            name='ga',
+            full_name='gallon',
+            factor=0.264172,
+            rounding=0.0000001,
+            uom_type='bigger',
+            active=True,
+            category_id=uom_categ.volume.id,
+            ))
+    if not get_records(OE, 'product_uom', domain=[('name','=','hu')], max_qty=1):
+        OE.product_uom.create(dict(
+            name='hu',
+            full_name='hundred',
+            factor=0.01,
+            uom_type='bigger',
+            active=True,
+            category_id=uom_categ.unit.id,
+            ))
+    for abbr, category, new_abbr, full_name in (
+            ('t', 'weight', 'mt', 'metric ton'),
+            ('Liter(s)', 'volume', 'l', 'liter'),
+            ('Unit(s)', 'unit', 'ea', 'unit'),
+            ('Dozen(s)', 'unit', 'doz', 'dozen'),
+            ('Hour(s)', 'working time', 'hr', 'hour'),
+            ('Day(s)', 'working time', 'day', 'day'),
+            ):
+        item = get_records(OE, 'product_uom', domain=[('name','=',abbr),('category_id','=',uom_categ[category].id)], max_qty=1)
+        if item:
+            OE.product_uom.write(item.id, dict(name=new_abbr, full_name=full_name))
+
+if __name__ == '__main__':
+    Run()
