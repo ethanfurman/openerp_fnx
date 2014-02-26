@@ -94,6 +94,11 @@ def fix_uom():
             ('Dozen(s)', 'unit', 'doz', 'dozen'),
             ('Hour(s)', 'working time', 'hr', 'hour'),
             ('Day(s)', 'working time', 'day', 'day'),
+            ('cm', 'length / distance', 'cm', 'centimeter'),
+            ('m', 'length / distance', 'm', 'meter'),
+            ('km', 'length / distance', 'km', 'kilometer'),
+            ('g', 'weight', 'g', 'gram'),
+            ('kg', 'weight', 'kg', 'kilogram'),
             ):
         item = get_records(OE, 'product_uom', domain=[('name','=',abbr),('category_id','=',uom_categ[category].id)], max_qty=1)
         if item:
