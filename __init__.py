@@ -1,3 +1,4 @@
+from osv import osv
 from VSS import address, dbf, enum, finance, path, utils, BBxXlate, time_machine
 from VSS.address import *
 from VSS.time_machine import PropertyDict
@@ -75,3 +76,13 @@ def get_user_timezone(obj, cr, uid, user_ids=None, context=None):
     for user in users:
         result[user.id] = user.tz or 'UTC'
     return result
+
+def Proposed(obj, values, record=None):
+    if record is None:
+        record = PropertyDict(default=lambda:False)
+    elif obj._table != record._table._name.replace('.','_'):
+        raise osv.except_osv('Programming Error','record is not from %s' % obj._table)
+    return PropertyDict(
+            [(k, record[k]) for k in obj._columns.keys()],
+            values,
+            )
