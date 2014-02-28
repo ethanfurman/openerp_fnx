@@ -1,14 +1,17 @@
-from VSS import dbf, enum, finance, path, utils, BBxXlate
+from VSS import address, dbf, enum, finance, path, utils, BBxXlate, time_machine
 from VSS.address import *
+from VSS.time_machine import PropertyDict
 from VSS.utils import *
 import ir_model
 import sys
 
 # make dbf and path look like submodules of fnx so other modules can do `from fnx.path import Path'
+sys.modules['fnx.address'] = address
 sys.modules['fnx.dbf'] = dbf
 sys.modules['fnx.enum'] = enum
 sys.modules['fnx.finance'] = finance
 sys.modules['fnx.path'] = path
+sys.modules['fnx.time_machine'] = time_machine
 sys.modules['fnx.utils'] = utils
 sys.modules['fnx.BBxXlate'] = BBxXlate
 
