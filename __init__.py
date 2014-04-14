@@ -77,6 +77,17 @@ def get_user_timezone(obj, cr, uid, user_ids=None, context=None):
         result[user.id] = user.tz or 'UTC'
     return result
 
+def get_user_login(obj, cr, uid, user_ids, context=None):
+    res_users = obj.pool.get('res.users')
+    if isinstance(user_ids, (int, long)):
+        record = res_users.browse(cr, uid, user_ids, context=context)
+        return record.login
+    res = {}
+    records = res_users.browes(cr, uid, user_ids, context=context)
+    for record in records:
+        res[record.id] = record.login
+    return res
+
 def Proposed(obj, values, record=None):
     if record is None:
         record = PropertyDict(default=lambda:False)
