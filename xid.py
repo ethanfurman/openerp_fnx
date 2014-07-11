@@ -1,6 +1,7 @@
 "various OpenERP routines related to exposing fis ids stored in xml_id in ir.model.data"
 
 from collections import defaultdict
+from osv.osv import except_osv as ERPError
 
 class xmlid(object):
 
@@ -8,11 +9,23 @@ class xmlid(object):
         xml_id = values.pop('xml_id', None)
         module = values.pop('module', None)
         if sum(1 for k in (xml_id, module) if k) == 1:
-            raise ValueError('if one of (xml_id, module) is set, both must be (%r, %r)' % (xml_id, module))
+            raise ERPError('Error', 'if one of (xml_id, module) is set, both must be (%r, %r)' % (xml_id, module))
         new_id = super(xmlid, self).create(cr, uid, values, context=context)
         if xml_id and module:
             imd = self.pool.get('ir.model.data')
-            imd.create(cr, uid, {'module':module, 'name':xml_id, 'model':self._name, 'res_id':new_id}, context=context)
+            # check for orphaned xml_ids
+            orphan = imd.search(cr, uid, [('name','=',xml_id),('module','=',module),('model','=',self._name)])
+            if orphan:
+                # actually an orphan?
+                found = imd.browse(cr, uid, orphan[0], context=context)
+                record = self.browse(cr, uid, found.res_id, context=context)
+                if record:
+                    # duplicates not allowed!
+                    raise ERPError('Error', '%s:%s belongs to %s' % (module, xml_id, record.name))
+                else:
+                    imd.write(cr, uid, orphan[0], {'res_id':new_id}, context=context)
+            else:
+                imd.create(cr, uid, {'module':module, 'name':xml_id, 'model':self._name, 'res_id':new_id}, context=context)
         return new_id
 
     def name_search(self, cr, uid, name='', args=None, operator='ilike', context=None, limit=100):
@@ -33,10 +46,10 @@ class xmlid(object):
         module = values.pop('module', None)
         given = sum(1 for k in (xml_id, module) if k)
         if given == 1:
-            raise ValueError('if one of (xml_id, module) is set, both must be (%r, %r)' % (xml_id, module))
+            raise ERPError('Error', 'if one of (xml_id, module) is set, both must be (%r, %r)' % (xml_id, module))
         if given == 2:
             if len(ids) > 1:
-                raise ValueError('(xml_id, module) pairs, if given, must be unique per record')
+                raise ERPError('Error', '(xml_id, module) pairs, if given, must be unique per record')
             imd = self.pool.get('ir.model.data')
             try:
                 record = imd.get_object_from_model_resid(cr, uid, model=self._name, res_id=ids[0])
@@ -45,6 +58,18 @@ class xmlid(object):
                 imd.create(cr, uid, {'model':self._name, 'res_id':ids[0], 'module':module, 'name':xml_id}, context=context)
         super(xmlid, self).write(cr, uid, ids, values, context=context)
         return True
+
+    def unlink(self, cr, uid, ids, context=None):
+        if isinstance(ids, (int, long)):
+            ids = [ids]
+        result = super(xmlid, self).unlink(cr, uid, ids, context=context)
+        imd = self.pool.get('ir.model.data')
+        for record in self.browse(cr, uid, ids, context=context):
+            xml_id = record.xml_id or ''
+            module = record.module or ''
+            for orphan in imd.search(cr, uid, [('name','=',xml_id),('module','=',module)], context=context):
+                imd.unlink(cr, uid, orphan.id, context=context)
+        return result
 
 
 def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
@@ -78,7 +103,7 @@ def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
 def update_xml_id(obj, cr, uid, id, field_name, field_value, arg, context=None):
     """one record at a time"""
     if not field_value:
-        raise ValueError('Empty values are not allowed for field %r' % field_name)
+        raise ERPError('Error', 'Empty values are not allowed for field %r' % field_name)
     if field_name == 'xml_id':
         field_name = 'name'
     model = obj._name
