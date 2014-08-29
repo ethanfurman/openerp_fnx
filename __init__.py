@@ -1,3 +1,4 @@
+from osv.osv import except_osv as ERPError
 from osv import osv
 from VSS import address, dbf, enum, finance, path, utils, BBxXlate, time_machine
 from VSS.address import *
@@ -92,12 +93,11 @@ def Proposed(obj, values, record=None):
     if record is None:
         record = PropertyDict(default=lambda:False)
     elif obj._table != record._table._name.replace('.','_'):
-        raise osv.except_osv('Programming Error','record is not from %s' % obj._table)
+        raise ERPError('Programming Error','record is not from %s' % obj._table)
     return PropertyDict(
             [(k, record[k]) for k in obj._columns.keys()],
             values,
             )
-
 
 dynamic_page_stub = """\
 <HTML>
