@@ -4,8 +4,14 @@ from VSS import address, dbf, enum, finance, path, utils, BBxXlate, time_machine
 from VSS.address import *
 from VSS.time_machine import PropertyDict
 from VSS.utils import *
+import email
 import ir_model
+import logging
+import smtplib
+import socket
 import sys
+
+_logger = logging.getLogger(__name__)
 
 # make dbf and path look like submodules of fnx so other modules can do `from fnx.path import Path'
 sys.modules['fnx.address'] = address
@@ -88,6 +94,48 @@ def get_user_login(obj, cr, uid, user_ids, context=None):
     for record in records:
         res[record.id] = record.login
     return res
+
+def mail(server, port, message):
+    """
+    sends email.message to server:port
+    """
+    if isinstance(message, basestring):
+        message = email.message_from_string(message)
+    receiver = message.get_all('To', []) + message.get_all('Cc', []) + message.get_all('Bcc', [])
+    sender = message['From']
+    try:
+        smtp = smtplib.SMTP(server, port)
+    except socket.error, exc:
+        send_errs = {}
+        for rec in receiver:
+            send_errs[rec] = (server, exc.args)
+    else:
+        try:
+            send_errs = smtp.sendmail(sender, receiver, message.as_string())
+        except smtplib.SMTPRecipientsRefused, exc:
+            send_errs = {}
+            for user, detail in exc.recipients.items():
+                send_errs[user] = (server, detail)
+        finally:
+            smtp.quit()
+    errs = {}
+    if send_errs:
+        for user in send_errs:
+            try:
+                server = 'mail.' + user.split('@')[1]
+                smtp = smtplib.SMTP(server, 25)
+            except socket.error, exc:
+                errs[user] = [send_errs[user], (server, exc.args)]
+            else:
+                try:
+                    smtp.sendmail(sender, [user], message.as_string())
+                except smtplib.SMTPRecipientsRefused, exc:
+                    errs[user] = [send_errs[user], (server, exc.recipients[user])]
+                finally:
+                    smtp.quit()
+    for user, errors in errs.items():
+        for server, (code, response) in errors:
+            _logger.warning('Error sending email -- %s: %s --> %s: %s' % (server, user, code, response))
 
 def Proposed(obj, values, record=None):
     if record is None:
