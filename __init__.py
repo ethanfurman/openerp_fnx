@@ -161,7 +161,7 @@ dynamic_page_stub = """\
 **********************************************************************************/
 
 
-var bustcachevar = 1 //bust potential caching of external pages after initial request? (1=yes, 0=no)
+var bustcachevar = 1 /* bust potential caching of external pages after initial request? (1=yes, 0=no) */
 var loadedobjects = ""
 var rootdomain = "http://"+window.location.hostname
 var bustcacheparameter = ""
@@ -169,7 +169,7 @@ var bustcacheparameter = ""
 function ajaxpage(url, containerid)
     {
     var xmlhttp = false;
-    if (window.XMLHttpRequest) // IE7+, Firefox, Chrome, Opera, Safari
+    if (window.XMLHttpRequest) /*  IE7+, Firefox, Chrome, Opera, Safari */
         xmlhttp = new XMLHttpRequest();
     else if (window.ActiveXObject) {
         try {
@@ -191,7 +191,7 @@ function ajaxpage(url, containerid)
         if (xmlhttp.readyState == 4 && xmlhttp.status == 200)
             loadpage(xmlhttp, containerid);
         }
-    if (bustcachevar) //if bust caching of external page
+    if (bustcachevar) /* if bust caching of external page */
         bustcacheparameter = (url.indexOf("?")!=-1) ? "&"+new Date().getTime() : "?"+new Date().getTime();
     xmlhttp.open('GET', url+bustcacheparameter, true);
     xmlhttp.send();
@@ -199,8 +199,8 @@ function ajaxpage(url, containerid)
 
 function loadpage(xmlhttp, containerid)
     {
-    //if (xmlhttp.readyState == 4 && (xmlhttp.status==200 || window.location.href.indexOf("http")==-1))
-    //alert("alerting..."+xmlhttp+"...alerted")
+    /* if (xmlhttp.readyState == 4 && (xmlhttp.status==200 || window.location.href.indexOf("http")==-1)) */
+    /* alert("alerting..."+xmlhttp+"...alerted") */
     document.getElementById(containerid).innerHTML = xmlhttp.responseText
     }
 
@@ -212,15 +212,15 @@ function loadobjs()
         {
         var file = arguments[i];
         var fileref = "";
-        if (loadedobjects.indexOf(file) == -1) //Check to see if this object has not already been added to page before proceeding
+        if (loadedobjects.indexOf(file) == -1) /* Check to see if this object has not already been added to page before proceeding */
             {
-            if (file.indexOf(".js") != -1) //If object is a js file
+            if (file.indexOf(".js") != -1) /* If object is a js file */
                 {
                 fileref = document.createElement('script');
                 fileref.setAttribute("type","text/javascript");
                 fileref.setAttribute("src", file);
                 }
-            else if (file.indexOf(".css") != -1) //If object is a css file
+            else if (file.indexOf(".css") != -1) /* If object is a css file */
                 {
                 fileref = document.createElement("link");
                 fileref.setAttribute("rel", "stylesheet");
@@ -231,7 +231,7 @@ function loadobjs()
         if (fileref != "")
             {
             document.getElementsByTagName("head").item(0).appendChild(fileref);
-            loadedobjects += file + " "; //Remember this object as being already added to page
+            loadedobjects += file + " "; /* Remember this object as being already added to page */
             }
         }
     }
