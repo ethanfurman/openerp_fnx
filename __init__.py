@@ -171,6 +171,19 @@ function ajaxpage(url, containerid)
     var xmlhttp = false;
     if (window.XMLHttpRequest) // IE7+, Firefox, Chrome, Opera, Safari
         xmlhttp = new XMLHttpRequest();
+    else if (window.ActiveXObject) {
+        try {
+            page_request = new ActiveXOjbect("Msxml2.XMLHTTP");
+            }
+        catch(e) {
+            try {
+                page_request = new ActiveXObject("Microsoft.XMLHTTP");
+                }
+            catch(e) {
+                return false;
+                }
+            }
+        }
     else
         return false;
     xmlhttp.onreadystatechange = function()
