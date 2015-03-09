@@ -102,7 +102,7 @@ def mail(oe, cr, uid, message):
     if isinstance(message, basestring):
         message = email.message_from_string(message)
     targets = message.get_all('To', []) + message.get_all('Cc', []) + message.get_all('Bcc', [])
-    sender = message['From']
+    original_sender = sender = message.get('From')
     ir_mail_server = oe.pool.get('ir.mail_server')
     for rec in ir_mail_server.browse(cr, uid):
         server = port = None
@@ -119,6 +119,9 @@ def mail(oe, cr, uid, message):
                     send_errs[rec] = (server, exc.args)
             else:
                 try:
+                    if original_sender is None:
+                        sender = 'OpenERP <no-reply@%s>' % server
+                        message['From'] = sender
                     send_errs = smtp.sendmail(sender, targets, message.as_string())
                     break
                 except smtplib.SMTPRecipientsRefused, exc:
@@ -130,6 +133,8 @@ def mail(oe, cr, uid, message):
     else:
         # never found a good server, or was unable to send mail
         errs = {}
+        if original_sender is None:
+            message['From'] = sender = 'OpenERP <no-reply@nowhere.invalid>'
         for user in send_errs or targets:
             try:
                 server = 'mail.' + user.split('@')[1]
