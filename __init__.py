@@ -95,42 +95,52 @@ def get_user_login(obj, cr, uid, user_ids, context=None):
         res[record.id] = record.login
     return res
 
-def mail(server, port, message):
+def mail(oe, cr, uid, message):
     """
     sends email.message to server:port
     """
     if isinstance(message, basestring):
         message = email.message_from_string(message)
-    receiver = message.get_all('To', []) + message.get_all('Cc', []) + message.get_all('Bcc', [])
+    targets = message.get_all('To', []) + message.get_all('Cc', []) + message.get_all('Bcc', [])
     sender = message['From']
-    try:
-        smtp = smtplib.SMTP(server, port)
-    except socket.error, exc:
-        send_errs = {}
-        for rec in receiver:
-            send_errs[rec] = (server, exc.args)
+    ir_mail_server = oe.pool.get('ir.mail_server')
+    for rec in ir_mail_server.browse(cr, uid):
+        server = port = None
+        if not rec.active:
+            continue
+        server = rec.smtp_host
+        port = rec.smtp_port
+        if server and port:
+            try:
+                smtp = smtplib.SMTP(server, port)
+            except socket.error, exc:
+                send_errs = {}
+                for rec in targets:
+                    send_errs[rec] = (server, exc.args)
+            else:
+                try:
+                    send_errs = smtp.sendmail(sender, targets, message.as_string())
+                    break
+                except smtplib.SMTPRecipientsRefused, exc:
+                    send_errs = {}
+                    for user, detail in exc.recipients.items():
+                        send_errs[user] = (server, detail)
+                finally:
+                    smtp.quit()
     else:
-        try:
-            send_errs = smtp.sendmail(sender, receiver, message.as_string())
-        except smtplib.SMTPRecipientsRefused, exc:
-            send_errs = {}
-            for user, detail in exc.recipients.items():
-                send_errs[user] = (server, detail)
-        finally:
-            smtp.quit()
-    errs = {}
-    if send_errs:
-        for user in send_errs:
+        # never found a good server, or was unable to send mail
+        errs = {}
+        for user in send_errs or targets:
             try:
                 server = 'mail.' + user.split('@')[1]
                 smtp = smtplib.SMTP(server, 25)
             except socket.error, exc:
-                errs[user] = [send_errs[user], (server, exc.args)]
+                errs[user] = [send_errs and send_errs[user] or None, (server, exc.args)]
             else:
                 try:
                     smtp.sendmail(sender, [user], message.as_string())
                 except smtplib.SMTPRecipientsRefused, exc:
-                    errs[user] = [send_errs[user], (server, exc.recipients[user])]
+                    errs[user] = [send_errs and send_errs[user] or None, (server, exc.recipients[user])]
                 finally:
                     smtp.quit()
     for user, errors in errs.items():
@@ -151,7 +161,7 @@ dynamic_page_stub = """\
 <HTML>
   <HEAD>
     <script type="text/javascript">
-
+    <!--
 /**********************************************************************************
 * Base on code from
 *
@@ -235,7 +245,7 @@ function loadobjs()
             }
         }
     }
-
+    // -->
     </script>
   </HEAD>
   <BODY>
