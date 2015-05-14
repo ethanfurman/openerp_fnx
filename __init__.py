@@ -104,6 +104,7 @@ def mail(oe, cr, uid, message):
     targets = message.get_all('To', []) + message.get_all('Cc', []) + message.get_all('Bcc', [])
     original_sender = sender = message.get('From')
     ir_mail_server = oe.pool.get('ir.mail_server')
+    errs = {}
     for rec in ir_mail_server.browse(cr, uid):
         server = port = None
         if not rec.active:
@@ -132,7 +133,6 @@ def mail(oe, cr, uid, message):
                     smtp.quit()
     else:
         # never found a good server, or was unable to send mail
-        errs = {}
         if original_sender is None:
             message['From'] = sender = 'OpenERP <no-reply@nowhere.invalid>'
         for user in send_errs or targets:
