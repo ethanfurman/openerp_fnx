@@ -39,6 +39,10 @@ class xmlid(object):
                 ns_result = self.name_get(cr, uid, ids, context=context)
         return list(set(result + ns_result))
 
+    def search(self, cr, uid, args, offset=0, limit=None, order=None, context=None, count=False):
+        # print 'xmlid.search(uid=%r, args=%r, context=%r' % (uid, args, context)
+        return super(xmlid, self).search(cr, uid, args, offset=offset, limit=limit, order=order, context=context, count=count)
+
     def write(self, cr, uid, ids, values, context=None):
         if isinstance(ids, (int, long)):
             ids = [ids]
@@ -96,8 +100,8 @@ def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
                 result[id]['xml_id'] = rec.name
                 result[id]['module'] = rec.module
         else:
-            result[id]['xml_id'] = ''
-            result[id]['module'] = ''
+            result[id]['xml_id'] = False
+            result[id]['module'] = False
     return dict(result)
 
 def update_xml_id(obj, cr, uid, id, field_name, field_value, arg, context=None):
