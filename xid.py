@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 from osv.osv import except_osv as ERPError
+from openerp import tools, SUPERUSER_ID
 
 class xmlid(object):
 
@@ -61,6 +62,7 @@ class xmlid(object):
             except ValueError:
                 imd.create(cr, uid, {'model':self._name, 'res_id':ids[0], 'module':module, 'name':xml_id}, context=context)
         super(xmlid, self).write(cr, uid, ids, values, context=context)
+        self.clear_caches()
         return True
 
     def unlink(self, cr, uid, ids, context=None):
@@ -73,8 +75,101 @@ class xmlid(object):
             module = record.module or ''
             for orphan in imd.search(cr, uid, [('name','=',xml_id),('module','=',module)], context=context):
                 imd.unlink(cr, uid, orphan.id, context=context)
+        self.clear_caches()
         return result
 
+    def clear_caches(self):
+        self._get_xml_ids.clear_cache(self)
+        self._search_xml_id.clear_cache(self)
+        return self
+
+    def get_xml_ids(self, cr, uid, ids, field_names, arg, context=None):
+        "wrapper for self._get_xml_ids"
+        return self._get_xml_ids(cr, uid, tuple(ids), tuple(field_names), arg)
+
+    @tools.ormcache(skiparg=3)
+    def _get_xml_ids(self, cr, uid, ids, field_names, arg):
+        """
+        Return {id: {'module':..., 'xml_id':...}} for each id in ids
+
+        It is entirely possible that any given model/res_id will have more than one
+        module/name match, but we only return matches where module equals the module
+        we're looking for; otherwise we return False.
+
+        arg = (module_name1, module_name2, ..., module_nameN)
+        """
+        modules = set(arg or '')
+        model = self._name
+        imd = self.pool.get('ir.model.data')
+        result = defaultdict(dict)
+        imd_records = {}
+        for rec in imd.get_model_records(cr, uid, model):
+            imd_records[rec.res_id] = rec
+        for id in ids:
+            rec = imd_records.get(id)
+            if rec is not None and rec.module in modules:
+                    result[id]['xml_id'] = rec.name
+                    result[id]['module'] = rec.module
+            else:
+                result[id]['xml_id'] = False
+                result[id]['module'] = False
+        return dict(result)
+
+    def update_xml_id(self, cr, uid, id, field_name, field_value, arg, context=None):
+        "one record at a time"
+        if not field_value:
+            raise ERPError('Error', 'Empty values are not allowed for field %r' % field_name)
+        if field_name == 'xml_id':
+            field_name = 'name'
+        model = self._name
+        imd = self.pool.get('ir.model.data')
+        rec = imd.get_object_from_model_resid(cr, uid, model, id)
+        imd.write(cr, uid, rec.id, {field_name:field_value})
+        self.clear_caches()
+        return True
+
+    def search_xml_id(self, cr, uid, obj_again, field_name, domain, context=None):
+        "wrapper for _search_xml_id"
+        return self._search_xml_id(cr, uid, obj_again, field_name, tuple(domain))
+
+    @tools.ormcache(skiparg=3)
+    def _search_xml_id(self, cr, uid, obj_again, field_name, domain):
+        """
+        domain[0][0] = 'xml_id'
+        domain[0][1] = 'ilike', 'not ilike', '=', '!='
+        domain[0][2] = 'some text to compare against'
+        """
+        if not domain:
+            return []
+        if field_name == 'xml_id':
+            field_name = 'name'
+        imd = self.pool.get('ir.model.data')
+        model = self._name
+        records = imd.get_model_records(cr, SUPERUSER_ID, model)
+        (field, op, text) ,= domain
+        if isinstance(text, (str, unicode)):
+            itext = text.lower()
+        elif isinstance(text, bool):
+            id_names = [(r.res_id, r[field_name]) for r in records]
+            if op == '=':
+                return [('id', 'not in', [x[0] for x in id_names])]
+            else:
+                return [('id', 'in', [x[0] for x in id_names])]
+        if op == 'ilike':
+            id_names = [(r.res_id, r[field_name]) for r in records if itext in r[field_name].lower()]
+        elif op == 'not ilike':
+            id_names = [(r.res_id, r[field_name]) for r in records if itext not in r[field_name].lower()]
+        elif op == '=':
+            id_names = [(r.res_id, r[field_name]) for r in records if text == r[field_name]]
+        elif op == '!=':
+            id_names = [(r.res_id, r[field_name]) for r in records if text != r[field_name]]
+        elif op == 'in':
+            id_names = [(r.res_id, r[field_name]) for r in records if r[field_name] in text]
+        elif op == 'not in':
+            id_names = [(r.res_id, r[field_name]) for r in records if r[field_name] not in text]
+        else:
+            raise ValueError('invalid op for external_id: %s' % op)
+        return [('id', 'in', [x[0] for x in id_names])]
 
 def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
     """
@@ -89,7 +184,6 @@ def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
     modules = set(arg or '')
     model = obj._name
     imd = obj.pool.get('ir.model.data')
-    ids = set(ids)
     result = defaultdict(dict)
     imd_records = {}
     for rec in imd.get_model_records(cr, uid, model):
@@ -104,7 +198,7 @@ def get_xml_ids(obj, cr, uid, ids, field_names, arg, context=None):
             result[id]['module'] = False
     return dict(result)
 
-def update_xml_id(obj, cr, uid, id, field_name, field_value, arg, context=None):
+def update_xml_id(obj, cr, uid, id, field_name, field_value, arg):
     """one record at a time"""
     if not field_value:
         raise ERPError('Error', 'Empty values are not allowed for field %r' % field_name)
@@ -112,8 +206,8 @@ def update_xml_id(obj, cr, uid, id, field_name, field_value, arg, context=None):
         field_name = 'name'
     model = obj._name
     imd = obj.pool.get('ir.model.data')
-    rec = imd.get_object_from_model_resid(cr, uid, model, id, context=context)
-    imd.write(cr, uid, rec.id, {field_name:field_value}, context=context)
+    rec = imd.get_object_from_model_resid(cr, uid, model, id)
+    imd.write(cr, uid, rec.id, {field_name:field_value})
     return True
 
 def search_xml_id(obj, cr, uid, obj_again, field_name, domain, context=None):

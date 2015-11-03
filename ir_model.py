@@ -8,7 +8,7 @@ class ir_model_data(osv.Model):
     _name = 'ir.model.data'
     _inherit = 'ir.model.data'
 
-    #@tools.ormcache()
+    @tools.ormcache()
     def _get_id_via_resid(self, cr, uid, model, res_id):
         """
         Returns id of the ir.model.data record corresponding to a given
@@ -26,13 +26,12 @@ class ir_model_data(osv.Model):
         Returns the ids of the ir.model.data records corresponding to a
         given model or raise a ValueError if none found
         """
-        context = {}
         ids = self.search(cr, uid, [('model', '=', model)])
         if not ids:
             return []
         return self.browse(cr, uid, ids)
-        
-    #@tools.ormcache()
+
+    @tools.ormcache()
     def get_object_reference_from_model_resid(self, cr, uid, model, res_id):
         """
         Returns (module, xml_id) corresponding to a given model and res_id (cached)
@@ -44,14 +43,15 @@ class ir_model_data(osv.Model):
             raise ValueError('No external ID currently defined in the system for: %s.%s' % (model, res_id))
         return (record.module, record.xml_id)
 
-    def get_object_from_model_resid(self, cr, uid, model, res_id, context=None):
+    def get_object_from_model_resid(self, cr, uid, model, res_id):
         """Returns a browsable record for the given model name and res_id or raise ValueError if not found"""
-        if context is None:
-            context = {}
         id = self._get_id_via_resid(cr, uid, model, res_id)
-        record = self.browse(cr, uid, id, context=context)
+        record = self.browse(cr, uid, id)
         if not record.exists():
             raise ValueError('No record found for %s.%s. It may have been deleted.' % (model, res_id))
         return record
 
-ir_model_data()
+    def clear_caches(self):
+        self._get_id_via_resid.clear_cache(self)
+        self.get_object_reference_from_model_resid.clear_cache(self)
+        return super(ir_model_data, self).clear_caches()

@@ -25,17 +25,17 @@ sys.modules['fnx.BBxXlate'] = BBxXlate
 
 class Normalize(object):
     """Adds support for normalizing character fields.
-    
+
     `create` and `write` both strip leading and trailing white space, while
     `check_unique` does a case-insensitive compare."""
 
     def check_unique(self, field, cr, uid, ids, context=None):
         """Case insensitive compare.
-        
+
         Meant to be called as:
-        
+
             lambda *a: self.check_unique(<field>, *a)
-        
+
         """
         existing_ids = self.search(cr, 1, [], context=context)
         values = set([r[field].lower() for r in self.browse(cr, uid, existing_ids, context=context) if r.id not in ids])
