@@ -101,6 +101,8 @@ def mail(oe, cr, uid, message):
     sends email.message to server:port
     """
     if isinstance(message, basestring):
+        if type(message) is unicode:
+            message = message.encode('utf-8')
         message = email.message_from_string(message)
     targets = message.get_all('To', []) + message.get_all('Cc', []) + message.get_all('Bcc', [])
     original_sender = sender = message.get('From')
