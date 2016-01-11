@@ -1,5 +1,6 @@
-from osv.osv import except_osv as ERPError
-from osv import osv
+from openerp.osv.osv import except_osv as ERPError
+from openerp.osv import osv
+from openerp import SUPERUSER_ID
 from VSS import address, dbf, enum, finance, path, utils, BBxXlate, time_machine
 from VSS.address import *
 from VSS.time_machine import PropertyDict
@@ -152,15 +153,70 @@ def mail(oe, cr, uid, message):
         for server, (code, response) in errors:
             _logger.warning('Error sending email -- %s: %s --> %s: %s' % (server, user, code, response))
 
-def Proposed(obj, values, record=None):
+def Proposed(obj, cr, values, record=None, context=None):
+    fields = obj._columns.keys()
     if record is None:
-        record = PropertyDict(default=lambda:False)
-    elif obj._table != record._table._name.replace('.','_'):
-        raise ERPError('Programming Error','record is not from %s' % obj._table)
-    return PropertyDict(
-            [(k, record[k]) for k in obj._columns.keys()],
-            values,
-            )
+        record = PropertyDict(fields)
+        record.update(obj.default_get(cr, SUPERUSER_ID, fields, context=context))
+        record.id = None
+    else:
+        old_rec, record = record, PropertyDict()
+        for f in fields:
+            record[f] = old_rec[f]
+        record.id = old_rec['id']
+    for key, value in values.items():
+        column = obj._columns[key]
+        if column._type not in ('many2one', 'one2many', 'many2many'):
+            record[key] = value
+        else:
+            if value is False:
+                record[key] = ((), False)[column._type == 'many2one']
+            else:
+                field_table = obj.pool.get(column._obj)
+                if column._type == 'many2one':
+                    record[key] = field_table.browse(cr, SUPERUSER_ID, value, context=context)
+                else:
+                    # get current records into Proposed format
+                    many_records = record[key] or []
+                    many_records = [Proposed(field_table, cr, {}, r, context=context) for r in many_records]
+                    # and update from values
+                    for command in value:
+                        cmd = command[0]
+                        if cmd == 0:
+                            # create
+                            sub_values = command[2]
+                            many_records.append(Proposed(field_table, cr, sub_values, context=context))
+                        elif cmd == 1:
+                            # update record
+                            r_id, sub_values = command[1:]
+                            for i, sub_record in enumerate(many_records):
+                                if sub_record.id == r_id:
+                                    many_records[i] = Proposed(field_table, cr, sub_values, sub_record, context=context)
+                        elif cmd == 2 or cmd == 3:
+                            # remove relationship (both) and delete target (2 only)
+                            r_id = command[1]
+                            many_records = [r for r in many_records if r.id != r_id]
+                        elif cmd == 4:
+                            # add relationship to existing target
+                            r_id = command[1]
+                            many_records.append(
+                                Proposed(
+                                    field_table, cr, {},
+                                    field_table.browse(cr, SUPERUSER_ID, r_id, context=context),
+                                    context=context,
+                                    ))
+                        elif cmd == 5:
+                            many_records = []
+                        elif cmd == 6:
+                            # replace any existing links with these links
+                            ids = command[2]
+                            many_records = [
+                                Proposed(field_table, cr, {}, r, context=context)
+                                for r in field_table.browse(cr, SUPERUSER_ID, ids, context=context)
+                                ]
+                    record[key] = many_records
+    return record
+
 
 dynamic_page_stub = """\
 <HTML>
