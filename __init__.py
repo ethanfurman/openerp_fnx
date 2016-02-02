@@ -2,6 +2,9 @@
 This portion of fnx should only have classes/functions that are
 usable without importing anything from OpenERP (so scripts can safely import fnx)
 '''
+import sys
+if 'openerp' in sys.modules:
+    import ir_model
 
 from VSS import address, dbf, enum, finance, path, utils, BBxXlate, time_machine
 from VSS.address import *
@@ -21,11 +24,11 @@ sys.modules['fnx.BBxXlate'] = BBxXlate
 
 class SortedDocEnum(enum.Enum):
 
-    _last_number = 0
+    __last_number__ = 0
 
     def __new__(cls, value, doc=None):
         """Ignores arguments (will be handled in __init__."""
-        sequence = cls._last_number + 1
+        sequence = cls.__last_number__ + 1
         cls.__last_number__ = sequence
         obj = Super(Enum, cls).__new__(cls)
         obj._value_ = value
