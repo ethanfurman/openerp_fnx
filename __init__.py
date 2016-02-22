@@ -97,7 +97,6 @@ def humanize(browse_record, context=None, _seen=None):
             record[field_name] = value or ''
         elif field._type in ('datetime', ):
             if value:
-                print value, type(value)
                 value = field.context_timestamp(cr, uid, value, context)
                 value = value.strftime('%Y-%m-%d %H:%M')
                 record[field_name] = value
