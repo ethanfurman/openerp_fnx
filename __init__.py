@@ -63,3 +63,65 @@ class SortedDocEnum(enum.Enum):
                 namespace[name] = member
     export_to = export
 
+def humanize(browse_record, context=None, _seen=None):
+    'return a PropertyDict with all fields converted to text'
+    context = context or browse_record._context or {}
+    cr = browse_record._cr
+    uid = browse_record._uid
+    model = browse_record._model
+    field_names = model._columns
+    seen = _seen or {}
+    key = model, browse_record.id
+    if key in seen:
+        return seen[key]
+    record = PropertyDict()
+    seen[key] = record
+    for field_name in field_names:
+        field = model._columns[field_name]
+        value = browse_record[field_name]
+        if field._type in ('many2one', 'one2many', 'many2many'):
+            record[field_name] = value
+        elif field._type in ('reference', ):
+            if value:
+                subrecord = value
+                value = subrecord.name_get()[0]
+            record[field_name] = value or ''
+        elif field._type in ('boolean', ):
+            choice = field.choice
+            record[field_name] = choice[value]
+        elif field._type in ('integer', 'float'):
+            record[field_name] = value or 0
+        elif field._type in ('float', ):
+            record[field_name] = value or 0.0
+        elif field._type in ('html', 'text', 'char', 'date', 'binaryname', 'serialized'):
+            record[field_name] = value or ''
+        elif field._type in ('datetime', ):
+            if value:
+                print value, type(value)
+                value = field.context_timestamp(cr, uid, value, context)
+                value = value.strftime('%Y-%m-%d %H:%M')
+                record[field_name] = value
+            else:
+                record[field_name] = ''
+        elif field._type in ('binary', ):
+            record[field_name] = '%d bytes' % len(value)
+        elif field._type in ('selection', ):
+            if not value:
+                record[field_name] = ''
+                continue
+            elif isinstance(field.selection, (tuple, list)):
+                selection = field.selection
+            else:
+                # call the 'dynamic selection' function
+                selection = field.selection(model, cr, uid, context)
+            for internal, user in selection:
+                if internal == value:
+                    value = user
+                    break
+            else:
+                value = '<invalid internal value: %r>' % value
+            record[field_name] = value
+        else:
+            record[field_name] = '<unk>'
+    return record
+
