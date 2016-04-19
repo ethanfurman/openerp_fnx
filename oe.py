@@ -148,7 +148,11 @@ def Proposed(obj, cr, values, record=None, context=None):
     else:
         old_rec, record = record, PropertyDict()
         for f in fields:
-            record[f] = old_rec[f]
+            try:
+                record[f] = old_rec[f]
+            except KeyError:
+                _logger.error('fields in old_rec: %r', old_rec._fields)
+                raise
         record.id = old_rec['id']
     for key, value in values.items():
         column = obj._columns[key]
