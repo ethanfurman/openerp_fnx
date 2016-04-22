@@ -97,6 +97,8 @@ class Humanize(object):
         if type in ('many2one', ):
             if value:
                 result = cls(value, context=self.context)
+            else:
+                result = value
         elif type in ('one2many', 'many2many'):
             result = [cls(v, context=self.context) for v in value]
         elif type in ('reference', ):
