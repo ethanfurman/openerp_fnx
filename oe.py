@@ -156,7 +156,7 @@ def Proposed(obj, cr, values, record=None, context=None):
         record.id = old_rec['id']
     for key, value in values.items():
         column = obj._columns[key]
-        if column._type not in ('many2one', 'one2many', 'many2many'):
+        if column._type not in ('many2one', 'one2many', 'many2many') or column.__class__.__name__ == 'function':
             record[key] = value
         else:
             if value is False:
