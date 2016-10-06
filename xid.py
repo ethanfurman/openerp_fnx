@@ -16,7 +16,7 @@ class xmlid(object):
         if xml_id and module:
             imd = self.pool.get('ir.model.data')
             # check for orphaned xml_ids
-            orphan = imd.search(cr, uid, [('name','=',xml_id),('module','=',module),('model','=',self._name)])
+            orphan = imd.search(cr, uid, [('name','=',xml_id),('module','=',module),('model','=',self._name)], context=context)
             if orphan:
                 # this shouldn't happen - log a warning
                 _logger.warning('FIS ID orphan found: %s::%s', xml_id, module)
