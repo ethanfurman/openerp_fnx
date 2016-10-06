@@ -19,11 +19,12 @@ class xmlid(object):
             orphan = imd.search(cr, uid, [('name','=',xml_id),('module','=',module),('model','=',self._name)], context=context)
             if orphan:
                 # this shouldn't happen - log a warning
-                _logger.warning('FIS ID orphan found: %s::%s', xml_id, module)
+                _logger.warning('FIS ID orphan found: <%s::%s>', module, xml_id)
                 # actually an orphan?
                 found = imd.browse(cr, uid, orphan[0], context=context)
                 record = self.browse(cr, uid, found.res_id, context=context)
                 if record:
+                    _logger.warning('orphan id: %r,  new id: %r' % (record.id, new_id))
                     # not an orphan, and duplicates not allowed!
                     raise ERPError('Error', '%s:%s belongs to %s' % (module, xml_id, record.name))
                 else:
