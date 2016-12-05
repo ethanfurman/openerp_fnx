@@ -7,6 +7,7 @@ import logging
 import smtplib
 import socket
 import sys
+import time
 
 _logger = logging.getLogger(__name__)
 
@@ -82,6 +83,12 @@ def mail(oe, cr, uid, message):
     """
     if isinstance(message, basestring):
         message = email.message_from_string(message)
+    # add UTC date header as OpenERP server is running in UTC time
+    message['Date'] = \
+            email.utils.formatdate(
+                email.utils.mktime_tz(
+                    time.localtime() + (0,)
+                    ))
     targets = message.get_all('To', []) + message.get_all('Cc', []) + message.get_all('Bcc', [])
     original_sender = sender = message.get('From')
     ir_mail_server = oe.pool.get('ir.mail_server')
