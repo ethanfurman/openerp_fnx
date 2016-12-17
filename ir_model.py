@@ -1,7 +1,7 @@
 "enhancements to allow displaying and searching the external_id field"
 
 from openerp import tools
-from openerp.osv import osv, fields
+from openerp.osv import osv
 
 class ir_model_data(osv.Model):
     "adds methods for retrieving and setting the external_id of records"

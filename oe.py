@@ -1,12 +1,9 @@
 from openerp import SUPERUSER_ID
-from VSS.time_machine import PropertyDict
-from VSS.address import *
-from VSS.utils import *
+from openerplib import AttrDict
 import email
 import logging
 import smtplib
 import socket
-import sys
 import time
 
 _logger = logging.getLogger(__name__)
@@ -149,11 +146,11 @@ def strip_whitespace(fields):
 def Proposed(obj, cr, values, record=None, context=None):
     fields = obj._columns.keys()
     if record is None:
-        record = PropertyDict(fields)
+        record = AttrDict(fields)
         record.update(obj.default_get(cr, SUPERUSER_ID, fields, context=context))
         record.id = None
     else:
-        old_rec, record = record, PropertyDict()
+        old_rec, record = record, AttrDict()
         for f in fields:
             try:
                 record[f] = old_rec[f]
