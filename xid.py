@@ -1,6 +1,6 @@
 "various OpenERP routines related to exposing fis ids stored in xml_id in ir.model.data"
 
-from osv.osv import except_osv as ERPError
+from openerp.exceptions import ERPError
 import logging
 
 _logger = logging.getLogger(__name__)
