@@ -3,8 +3,10 @@ This portion of fnx should only have classes/functions that are
 usable without importing anything from OpenERP (so scripts can safely import fnx)
 '''
 
-__all__ = ['Humanize', 'ir_model']
+__all__ = ['Humanize', 'ir_model', 'date']
 
+from openerp.tools import DEFAULT_SERVER_DATE_FORMAT
+import dbf
 import ir_model
 import logging
 
@@ -101,3 +103,10 @@ class Humanize(object):
         except AttributeError:
             raise KeyError('%s not found' % name)
 
+def date(year, month=None, day=None):
+    if not year:
+        return dbf.Date(None)
+    elif isinstance(year, basestring):
+        return dbf.Date.strptime(year, DEFAULT_SERVER_DATE_FORMAT)
+    else:
+        return dbf.Date(year, month, day)
