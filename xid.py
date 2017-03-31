@@ -35,15 +35,16 @@ class xmlid(object):
         return new_id
 
     def name_search(self, cr, uid, name='', args=None, operator='ilike', context=None, limit=100):
-        result = super(xmlid, self).name_search(cr, uid, name=name, args=args, operator=operator, context=context, limit=limit)
+        print '%s.name_search: %r  %r  %r' % (self._name, name, operator, args)
         if not args:
             args = []
-        ns_result = []
         if name:
-            ids = self.search(cr, uid, [('xml_id','ilike',name.upper())] + args, limit=limit, context=context)
-            if ids:
-                ns_result = self.name_get(cr, uid, ids, context=context)
-        return list(set(result + ns_result))
+            junctor = ('|', '&')['not' in operator or operator == '!=']
+            args.extend([junctor, (self._rec_name, operator, name), ('xml_id', operator, name)])
+            name = ''
+            operator = 'ilike'
+            print '           is now: %r  %r  %r' % (name, operator, args)
+        return super(xmlid, self).name_search(cr, uid, name=name, args=args, operator=operator, context=context, limit=limit)
 
     def write(self, cr, uid, ids, values, context=None):
         if isinstance(ids, (int, long)):
