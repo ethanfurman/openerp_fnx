@@ -35,7 +35,6 @@ class xmlid(object):
         return new_id
 
     def name_search(self, cr, uid, name='', args=None, operator='ilike', context=None, limit=100):
-        print '%s.name_search: %r  %r  %r' % (self._name, name, operator, args)
         if not args:
             args = []
         if name:
@@ -43,7 +42,6 @@ class xmlid(object):
             args.extend([junctor, (self._rec_name, operator, name), ('xml_id', operator, name)])
             name = ''
             operator = 'ilike'
-            print '           is now: %r  %r  %r' % (name, operator, args)
         return super(xmlid, self).name_search(cr, uid, name=name, args=args, operator=operator, context=context, limit=limit)
 
     def write(self, cr, uid, ids, values, context=None):
