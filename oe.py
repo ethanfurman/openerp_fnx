@@ -122,7 +122,7 @@ def mail(oe, cr, uid, message):
             message['From'] = sender = 'OpenERP <no-reply@nowhere.invalid>'
         for user in send_errs or targets:
             try:
-                server = 'mail.' + user.split('@')[1]
+                server = 'mail.' + user.split('@')[1].strip('>')
                 smtp = smtplib.SMTP(server, 25)
             except socket.error, exc:
                 errs[user] = [send_errs and send_errs[user] or None, (server, exc.args)]
