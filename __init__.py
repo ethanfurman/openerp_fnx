@@ -5,10 +5,14 @@ usable without importing anything from OpenERP (so scripts can safely import fnx
 
 __all__ = ['Humanize', 'ir_model', 'date']
 
-from openerp.tools import DEFAULT_SERVER_DATE_FORMAT
+from openerp.tools import DEFAULT_SERVER_DATETIME_FORMAT, DEFAULT_SERVER_DATE_FORMAT
+from openerp.exceptions import ERPError
 import dbf
 import ir_model
 import logging
+from pytz import timezone
+
+utc = timezone('UTC')
 
 _logger = logging.getLogger()
 
@@ -110,3 +114,28 @@ def date(year, month=None, day=None):
         return dbf.Date.strptime(year, DEFAULT_SERVER_DATE_FORMAT)
     else:
         return dbf.Date(year, month, day)
+
+def construct_datetime(appt_date, appt_time, context):
+    # user_tz = timezone(get_user_timezone(self, cr, uid)[uid])
+    # user_tz = timezone('America/Los_Angeles')
+    user_tz = timezone(context.get('tz'))
+    date = time = None
+    if appt_date:
+        # will never see an invalid date due to javascript library
+        date = dbf.Date(appt_date)
+    if appt_time:
+        # may see an invalid time
+        try:
+            time = dbf.Time.fromfloat(appt_time)
+        except:
+            raise ERPError('Invalid Time', 'Time should be between 0:00 and 23:59 (not %s)' % appt_time)
+    else:
+        time = dbf.Time(0)
+    if date:
+        # we have all the pieces, make a datetime
+        dt = dbf.DateTime.combine(date, time).datetime()
+        dt = user_tz.normalize(user_tz.localize(dt)).astimezone(utc)
+        datetime = dt.strftime(DEFAULT_SERVER_DATETIME_FORMAT)
+    else:
+        datetime = False
+    return datetime
