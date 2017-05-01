@@ -124,6 +124,44 @@ def construct_datetime(appt_date, appt_time, context):
         # will never see an invalid date due to javascript library
         date = dbf.Date(appt_date)
     if appt_time:
+        hours = []
+        minutes = []
+        sep = ''
+        pm = False
+        target = hours
+        for i, ch in enumerate(appt_time):
+            if ch.isdigit():
+                target.append(ch)
+            elif ch in '.:':
+                if sep != '':
+                    raise ERPError('Invalid Time', 'error with %r: seconds are not recorded' % appt_time)
+                sep = ch
+                target = minutes
+            else:
+                break
+        else:
+            # skip past last valid digit
+            i += 1
+        postfix = appt_time[i:].lower().replace('.','').strip()
+        if postfix:
+            # 10:15 am
+            if postfix not in ('am', 'pm'):
+                raise ERPError('Invalid Time', 'error with am/pm: %r' % appt_time[i:])
+            if postfix == 'pm':
+                pm = True
+        if not minutes and len(hours) > 2:
+            # 1330
+            minutes = hours[-2:]
+            hours = hours[:-2]
+        if sep == '.':
+            # 7.5
+            hours += ['.'] + minutes
+            minutes = ['0']
+        hours = float(''.join(hours))
+        minutes = float(''.join(minutes))
+        if pm and hours < 12:
+            hours += 12
+        appt_time = hours + minutes/60
         # may see an invalid time
         try:
             time = dbf.Time.fromfloat(appt_time)
