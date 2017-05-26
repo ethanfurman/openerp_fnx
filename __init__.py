@@ -107,11 +107,11 @@ class Humanize(object):
         except AttributeError:
             raise KeyError('%s not found' % name)
 
-def date(year, month=None, day=None):
+def date(year, month=DEFAULT_SERVER_DATE_FORMAT, day=None):
     if not year:
         return dbf.Date(None)
     elif isinstance(year, basestring):
-        return dbf.Date.strptime(year, DEFAULT_SERVER_DATE_FORMAT)
+        return dbf.Date.strptime(year, month)
     else:
         return dbf.Date(year, month, day)
 
