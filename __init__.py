@@ -118,7 +118,7 @@ def date(year, month=DEFAULT_SERVER_DATE_FORMAT, day=None):
 def construct_datetime(appt_date, appt_time, context):
     # user_tz = timezone(get_user_timezone(self, cr, uid)[uid])
     # user_tz = timezone('America/Los_Angeles')
-    user_tz = timezone(context.get('tz'))
+    user_tz = timezone((context or {}).get('tz', 'America/Los_Angeles'))
     date = time = None
     if appt_date:
         # will never see an invalid date due to javascript library
