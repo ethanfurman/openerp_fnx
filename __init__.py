@@ -124,7 +124,7 @@ def construct_datetime(appt_date, appt_time, context):
         # will never see an invalid date due to javascript library
         date = dbf.Date(appt_date)
     if appt_time:
-        if isinstance(appt_time, float):
+        if isinstance(appt_time, basestring):
             hours = []
             minutes = []
             sep = ''
