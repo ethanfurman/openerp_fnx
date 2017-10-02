@@ -158,8 +158,11 @@ def construct_datetime(appt_date, appt_time, context):
                 # 7.5
                 hours += ['.'] + minutes
                 minutes = ['0']
-            hours = float(''.join(hours))
-            minutes = float(''.join(minutes))
+            try:
+                hours = float(''.join(hours))
+                minutes = float(''.join(minutes))
+            except:
+                raise ERPError('Invalid Time', 'Time should be between 0:00 and 23:59 (not %r)' % appt_time)
             if pm and hours < 12:
                 hours += 12
             appt_time = hours + minutes/60
