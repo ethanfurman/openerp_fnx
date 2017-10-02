@@ -1,12 +1,13 @@
-#!/usr/bin/env python2.7
+#!/usr/local/sbin/suid-python --virtualenv
 
 from scription import *
 from VSS.openerp import get_records
 from VSS.time_machine import PropertyDict
 import openerplib
+import os
 
 HOST = DB = USER = PW = None
-execfile('/etc/openerp/credentials')
+execfile('%s/config/credentials' % os.environ['VIRTUAL_ENV'])
 
 US_CA_states = (
     ('AL', 'US', 'Alabama'),
