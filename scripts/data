@@ -1,11 +1,11 @@
 #!/usr/bin/env python2.7
 
-from scription.api import *
+from scription import *
 from VSS.openerp import get_records
-from VSS.path import Path
 from VSS.time_machine import PropertyDict
 import openerplib
 
+HOST = DB = USER = PW = None
 execfile('/etc/openerp/credentials')
 
 US_CA_states = (
@@ -13,6 +13,7 @@ US_CA_states = (
     ('AK', 'US', 'Alaska'),
     ('AZ', 'US', 'Arizona'),
     ('AR', 'US', 'Arkansas'),
+    ('AS', 'US', 'American Samoa'),
     ('CA', 'US', 'California'),
     ('CO', 'US', 'Colorado'),
     ('CT', 'US', 'Connecticut'),
@@ -48,6 +49,7 @@ US_CA_states = (
     ('MS', 'US', 'Mississippi'),
     ('MO', 'US', 'Missouri'),
     ('PA', 'US', 'Pennsylvania'),
+    ('PR', 'US', 'Puerto Rico'),
     ('RI', 'US', 'Rhode Island'),
     ('SC', 'US', 'South Carolina'),
     ('SD', 'US', 'South Dakota'),
@@ -56,6 +58,7 @@ US_CA_states = (
     ('UT', 'US', 'Utah'),
     ('VT', 'US', 'Vermont'),
     ('VA', 'US', 'Virginia'),
+    ('VI', 'US', 'US Virgin Islands'),
     ('WA', 'US', 'Washington'),
     ('WV', 'US', 'West Virginia'),
     ('WI', 'US', 'Wisconsin'),
