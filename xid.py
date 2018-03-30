@@ -24,9 +24,9 @@ class xmlid(object):
                 found = imd.browse(cr, uid, orphan[0], context=context)
                 record = self.browse(cr, uid, found.res_id, context=context)
                 if record:
-                    _logger.warning('orphan id: %r,  new id: %r' % (record.id, new_id))
                     # not an orphan, and duplicates not allowed!
-                    raise ERPError('Error', '%s:%s belongs to %s' % (module, xml_id, record.name))
+                    _logger.warning('orphan id: %r' % (record.id, ))
+                    raise ERPError('Error', '%s:%s belongs to %s' % (module, xml_id, record.id))
                 else:
                     # adopt the orphan
                     imd.write(cr, uid, orphan[0], {'res_id':new_id}, context=context)
