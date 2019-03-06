@@ -38,10 +38,9 @@ class xmlid(object):
         if not args:
             args = []
         if name:
-            junctor = ('|', '&')['not' in operator or operator == '!=']
-            args.extend([junctor, (self._rec_name, operator, name), ('xml_id', operator, name)])
-            name = ''
-            operator = 'ilike'
+            ids = self.search(cr, uid, [('xml_id','=',name)]+ args, limit=limit, context=context)
+            if ids:
+                return self.name_get(cr, uid, ids, context=context)
         return super(xmlid, self).name_search(cr, uid, name=name, args=args, operator=operator, context=context, limit=limit)
 
     def write(self, cr, uid, ids, values, context=None):
