@@ -67,8 +67,8 @@ class xmlid(object):
         "return {xml_id: id} for all xml_ids in module"
         imd = self.pool.get('ir.model.data')
         result = {}
-        for rec in imd.browse(cr, uid, [('model','=',self._name),('module','=',module)], context=context):
-            if ids is None or rec.res_id in ids:
-                result[rec.name] = rec.res_id
+        for rec in imd.read(cr, uid, [('model','=',self._name),('module','=',module)], fields=['name','res_id'], context=context):
+            if ids is None or rec['res_id'] in ids:
+                result[rec['name']] = rec['res_id']
         return result
 
