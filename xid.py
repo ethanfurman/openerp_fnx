@@ -31,7 +31,16 @@ class xmlid(object):
                     # adopt the orphan
                     imd.write(cr, uid, orphan[0], {'res_id':new_id}, context=context)
             else:
-                imd.create(cr, uid, {'module':module, 'name':xml_id, 'model':self._name, 'res_id':new_id}, context=context)
+                imd.create(
+                        cr, uid,
+                        {
+                            'module':'fis',
+                            'name':"F%03d_%s_%s" % (int(module[1:]), xml_id, self._name),
+                            'model':self._name,
+                            'res_id':new_id,
+                            },
+                        context=context,
+                        )
         return new_id
 
     def name_search(self, cr, uid, name='', args=None, operator='ilike', context=None, limit=100):
@@ -60,9 +69,27 @@ class xmlid(object):
             imd = self.pool.get('ir.model.data')
             try:
                 record = imd.get_object_from_model_resid(cr, uid, model=self._name, res_id=ids[0])
-                imd.write(cr, uid, record.id, {'module':module, 'name':xml_id}, context=context)
+                imd.write(
+                        cr, uid,
+                        record.id,
+                        {
+                            'module':'fis',
+                            'name':"F%03d_%s_%s" % (int(module[1:]), xml_id, self._name),
+                            'model':self._name,
+                            'res_id':record.id,
+                            },
+                        context=context)
             except ValueError:
-                imd.create(cr, uid, {'model':self._name, 'res_id':ids[0], 'module':module, 'name':xml_id}, context=context)
+                imd.create(
+                        cr, uid,
+                        {
+                            'module':'fis',
+                            'name':"F%03d_%s_%s" % (int(module[1:]), xml_id, self._name),
+                            'model':self._name,
+                            'res_id':record.id,
+                            },
+                        context=context,
+                        )
         super(xmlid, self).write(cr, uid, ids, values, context=context)
         return True
 
