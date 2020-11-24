@@ -20,10 +20,17 @@ class xmlid(object):
 
     def get_xml_id_map(self, cr, uid, module, ids=None, context=None):
         "return {xml_id: id} for all xml_ids in module"
-        imd = self.pool.get('ir.model.data')
-        result = {}
-        for rec in imd.read(cr, uid, [('model','=',self._name),('module','=',module)], fields=['name','res_id'], context=context):
-            if ids is None or rec['res_id'] in ids:
-                result[rec['name']] = rec['res_id']
+        if ids is None:
+            result = dict(
+                    (r['xml_id'], r['id'])
+                    for r in self.read(cr, uid, [('id','!=',False)], fields=['id','xml_id','module'], context=context)
+                    if r['module'] and r['xml_id']
+                    )
+        else:
+            result = dict(
+                    (r['xml_id'], r['id'])
+                    for r in self.read(cr, uid, [('id','in',ids)], fields=['id','xml_id','module'], context=context)
+                    if r['module'] and r['xml_id']
+                    )
         return result
 
