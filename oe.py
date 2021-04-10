@@ -265,7 +265,13 @@ function loadpage(xmlhttp, containerid)
     {
     /* if (xmlhttp.readyState == 4 && (xmlhttp.status==200 || window.location.href.indexOf("http")==-1)) */
     /* alert("alerting..."+xmlhttp+"...alerted") */
-    document.getElementById(containerid).innerHTML = xmlhttp.responseText
+    /* ... */
+    /* look for all containers with target id as I have not figured out how to get OE framework to clear */
+    /* previous document, so I end up with multiple containers with the same containerid                 */
+    var containers = document.querySelectorAll('[id=salesinqcontent]');
+    var last = containers.length - 1;
+    var target_div = containers[last];
+    target_div.innerHTML = xmlhttp.responseText
     }
 
 function loadobjs()
