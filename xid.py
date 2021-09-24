@@ -11,9 +11,9 @@ class xmlid(object):
             args = []
         if name:
             if name[0] == ' ':
-                ids = self.search(cr, uid, [('xml_id','like',name.lstrip())]+ args, limit=limit, context=context)
+                ids = self.search(cr, uid, [('xml_id','ilike',name.lstrip())]+ args, limit=limit, context=context)
             else:
-                ids = self.search(cr, uid, [('xml_id','=like',name+'%')]+ args, limit=limit, context=context)
+                ids = self.search(cr, uid, [('xml_id','=ilike',name+'%')]+ args, limit=limit, context=context)
             if ids:
                 return self.name_get(cr, uid, ids, context=context)
         return super(xmlid, self).name_search(cr, uid, name=name, args=args, operator=operator, context=context, limit=limit)
