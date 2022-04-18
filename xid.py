@@ -10,7 +10,7 @@ class xmlid(object):
     def create(self, cr, uid, values, context=None):
         xml_id = values.get('xml_id')
         module = values.get('module')
-        if self.name == 'product.product' and xml_id and not module:
+        if self._name == 'product.product' and xml_id and not module:
             module = 'NVTY'
         if sum(1 for k in (xml_id, module) if k) == 1:
             raise ERPError('Error', 'if one of (xml_id, module) is set, both must be (%r, %r)' % (xml_id, module))
