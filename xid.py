@@ -20,7 +20,6 @@ class xmlid(object):
          given = sum(1 for k in (xml_id, module) if k)
         # if given == 1:
         #     raise ERPError('Error', 'if one of (xml_id, module) is set, both must be (%r, %r)' % (xml_id, module))
-
         new_id = super(xmlid, self).create(cr, uid, values, context=context)
         if xml_id and module:
             imd = self.pool.get('ir.model.data')
