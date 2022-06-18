@@ -14,17 +14,15 @@ class xmlid(object):
             # some FIS records can be created first in OpenERP, so assign
             # the correct module
             if self._name == 'product.product':
-                module = 'NVTY'
+                values['module'] = module = 'NVTY'
             elif self._name == 'wholeherb_integration.product_lot':
-                module = 'NVBA'
-        given = sum(1 for k in (xml_id, module) if k)
-        # if given == 1:
-        #     raise ERPError('Error', 'if one of (xml_id, module) is set, both must be (%r, %r)' % (xml_id, module))
+                values['module'] = module = 'NVBA'
         new_id = super(xmlid, self).create(cr, uid, values, context=context)
         if xml_id and module:
             imd = self.pool.get('ir.model.data')
+            imd_name = '%s_%s_%s' % (module, xml_id, self._table)
             # check for orphaned xml_ids
-            orphan = imd.search(cr, uid, [('name','=',xml_id),('module','=',module),('model','=',self._name)], context=context)
+            orphan = imd.search(cr, uid, [('module','=','whc'),('name','=ilike',imd_name)], context=context)
             if orphan:
                 # this shouldn't happen - log a warning
                 _logger.warning('FIS ID orphan found: <%s::%s>', module, xml_id)
@@ -34,12 +32,12 @@ class xmlid(object):
                 if record:
                     # not an orphan, and duplicates not allowed!
                     _logger.warning('orphan id: %r' % (record.id, ))
-                    raise ERPError('Error', '%s:%s belongs to %s' % (module, xml_id, record.id))
+                    raise ERPError('Error', '%s:%s belongs to [%s] %s' % (module, xml_id, record.id, record[self._rec_name]))
                 else:
                     # adopt the orphan
                     imd.write(cr, uid, orphan[0], {'res_id':new_id}, context=context)
             else:
-                imd.create(cr, uid, {'module':module, 'name':xml_id, 'model':self._name, 'res_id':new_id}, context=context)
+                imd.create(cr, uid, {'module':'whc', 'name':imd_name, 'model':self._name, 'res_id':new_id}, context=context)
         return new_id
 
     def name_search(self, cr, uid, name='', args=None, operator='ilike', context=None, limit=100):
@@ -59,27 +57,49 @@ class xmlid(object):
             ids = [ids]
         xml_id = values.get('xml_id')
         module = values.get('module')
-        given = sum(1 for k in (xml_id, module) if k)
-        if given == 1:
-            raise ERPError('Error', 'if one of (xml_id, module) is set, both must be (%r, %r)' % (xml_id, module))
-        if given == 2:
-            if len(ids) > 1:
-                raise ERPError('Error', '(xml_id, module) pairs, if given, must be unique per record')
+        if xml_id and not module:
+            # some FIS records can be created first in OpenERP, so assign
+            # the correct module
+            if self._name == 'product.product':
+                values['module'] = module = 'NVTY'
+            elif self._name == 'wholeherb_integration.product_lot':
+                values['module'] = module = 'NVBA'
+        if xml_id and len(ids) > 1:
+            raise ERPError('Error', 'FIS IDs must be unique')
+        res = True
+        if not (xml_id or module):
+            return super(xmlid, self).write(cr, uid, ids, values, context=context)
+        for rec in self.browse(cr, uid, ids, context=context):
+            res = super(xmlid, self).write(cr, uid, rec.id, values, context=context)
+            if not xml_id:
+                values['xml_id'] = xml_id = rec.xml_id
+            if not module:
+                values['module'] = module = rec.module
+            # create new imd name
+            if xml_id and module:
+                imd_name = '%s_%s_%s' % (module, xml_id, self._table)
+            else:
+                imd_name = None
+            # get any existing imd record
             imd = self.pool.get('ir.model.data')
             try:
-                record = imd.get_object_from_model_resid(cr, uid, model=self._name, res_id=ids[0])
-                imd.write(cr, uid, record.id, {'module':module, 'name':xml_id}, context=context)
+                record = imd.get_object_from_model_resid(cr, uid, model=self._name, res_id=rec.id)
+                if imd_name:
+                    imd.write(cr, uid, record.id, {'name':imd_name}, context=context)
+                else:
+                    imd.unlink(cr, uid, record.id, context=context)
             except ValueError:
-                imd.create(cr, uid, {'model':self._name, 'res_id':ids[0], 'module':module, 'name':xml_id}, context=context)
-        super(xmlid, self).write(cr, uid, ids, values, context=context)
-        return True
+                if imd_name:
+                    imd.create(cr, uid, {'module':'whc', 'name':imd_name, 'model':self._name, 'res_id':rec.id, }, context=context)
+            return res
 
     def get_xml_id_map(self, cr, uid, module, ids=None, context=None):
         "return {xml_id: id} for all xml_ids in module"
         imd = self.pool.get('ir.model.data')
+        model = self._table
         result = {}
-        for rec in imd.read(cr, uid, [('model','=',self._name),('module','=',module)], fields=['name','res_id'], context=context):
-            if ids is None or rec['res_id'] in ids:
-                result[rec['name']] = rec['res_id']
+        for rec in imd.read(cr, uid, [('module','=','whc'),('name','=ilike','%s_%%_%s' % (module, model))], fields=['name','res_id'], context=context):
+            if ids is None or rec.res_id in ids:
+                name = rec['name'][len(module):-len(model)][1:-1]
+                result[name] = rec['res_id']
         return result
-
