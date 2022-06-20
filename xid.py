@@ -17,6 +17,8 @@ class xmlid(object):
                 values['module'] = module = 'NVTY'
             elif self._name == 'wholeherb_integration.product_lot':
                 values['module'] = module = 'NVBA'
+            elif self._name == 'product.category':
+                values['module'] = module = 'CNVZc'
         new_id = super(xmlid, self).create(cr, uid, values, context=context)
         if xml_id and module:
             imd = self.pool.get('ir.model.data')
