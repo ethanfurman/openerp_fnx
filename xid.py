@@ -8,6 +8,7 @@ _logger = logging.getLogger(__name__)
 class xmlid(object):
 
     def create(self, cr, uid, values, context=None):
+        context = context or {}
         xml_id = values.get('xml_id')
         module = values.get('module')
         if xml_id and not module:
@@ -20,7 +21,7 @@ class xmlid(object):
             elif self._name == 'product.category':
                 values['module'] = module = 'CNVZc'
         new_id = super(xmlid, self).create(cr, uid, values, context=context)
-        if xml_id and module:
+        if xml_id and module and not context.get('fis_maintenance', False):
             imd = self.pool.get('ir.model.data')
             imd_name = '%s_%s_%s' % (module, xml_id, self._table)
             # check for orphaned xml_ids
@@ -55,6 +56,7 @@ class xmlid(object):
         return super(xmlid, self).name_search(cr, uid, name=name, args=args, operator=operator, context=context, limit=limit)
 
     def write(self, cr, uid, ids, values, context=None):
+        context = context or {}
         if isinstance(ids, (int, long)):
             ids = [ids]
         xml_id = values.get('xml_id')
@@ -69,7 +71,7 @@ class xmlid(object):
         if xml_id and len(ids) > 1:
             raise ERPError('Error', 'FIS IDs must be unique')
         res = True
-        if not (xml_id or module):
+        if not (xml_id or module) or context.get('fis_maintenance', False):
             return super(xmlid, self).write(cr, uid, ids, values, context=context)
         for rec in self.browse(cr, uid, ids, context=context):
             res = super(xmlid, self).write(cr, uid, rec.id, values, context=context)
@@ -105,3 +107,15 @@ class xmlid(object):
                 name = rec['name'][len(module):-len(model)][1:-1]
                 result[name] = rec['res_id']
         return result
+
+    def unlink(self, cr, uid, ids, context=None):
+        context = context or {}
+        if isinstance(ids, (int, long)):
+            ids = [ids]
+        res = super(xmlid, self).unlink(cr, uid, ids, context=context)
+        if res and not context.get('fis_maintenance', False):
+            imd = self.pool.get('ir.model.data')
+            ids = imd.get_ids_from_model_resid(cr, uid, model=self._name, res_id=ids)
+            if ids:
+                res = imd.unlink(cr, uid, ids, context=context)
+        return res

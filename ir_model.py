@@ -1,6 +1,5 @@
 "enhancements to allow displaying and searching the external_id field"
 
-from openerp import tools
 from openerp.osv import osv
 
 class ir_model_data(osv.Model):
@@ -8,50 +7,16 @@ class ir_model_data(osv.Model):
     _name = 'ir.model.data'
     _inherit = 'ir.model.data'
 
-    @tools.ormcache()
-    def _get_id_via_resid(self, cr, uid, model, res_id):
+    def get_ids_from_model_resid(self, cr, uid, module, model, res_ids):
         """
-        Returns id of the ir.model.data record corresponding to a given
-        model and res_id (cached) or raise a ValueError if not found
+        Returns ids corresponding to a given model and res_id
+        or raise ValueError if none found
         """
-        ids = self.search(cr, uid, [('model','=',model), ('res_id','=', res_id)])
+        imd_ids = self.search(cr, uid, [('model','=',model), ('res_id','in', res_ids)])
         if not ids:
-            raise ValueError('No external ID currently defined in the system for: %s.%s' % (model, res_id))
-        # the sql constraints ensure us we have only one result
-        return ids[0]
-
-    #@tools.ormcache()
-    def get_model_records(self, cr, uid, model):
-        """
-        Returns the ids of the ir.model.data records corresponding to a
-        given model or raise a ValueError if none found
-        """
-        ids = self.search(cr, uid, [('model', '=', model)])
-        if not ids:
-            return []
-        return self.browse(cr, uid, ids)
-
-    @tools.ormcache()
-    def get_object_reference_from_model_resid(self, cr, uid, model, res_id):
-        """
-        Returns (module, xml_id) corresponding to a given model and res_id (cached)
-        or raise ValueError if not found
-        """
-        data_id = self._get_id_via_resid(cr, uid, model, res_id)
-        record = self.browse(cr, uid, [data_id])
-        if not record.xml_id:
-            raise ValueError('No external ID currently defined in the system for: %s.%s' % (model, res_id))
-        return (record.module, record.xml_id)
-
-    def get_object_from_model_resid(self, cr, uid, model, res_id):
-        """Returns a browsable record for the given model name and res_id or raise ValueError if not found"""
-        id = self._get_id_via_resid(cr, uid, model, res_id)
-        record = self.browse(cr, uid, id)
-        if not record.exists():
-            raise ValueError('No record found for %s.%s. It may have been deleted.' % (model, res_id))
-        return record
-
-    def clear_caches(self):
-        self._get_id_via_resid.clear_cache(self)
-        self.get_object_reference_from_model_resid.clear_cache(self)
-        return super(ir_model_data, self).clear_caches()
+            raise ValueError('No external ID currently defined in the system for: %s.%s.%s' % (module, model, res_id))
+        ids = [
+                r.res_id
+                for r in self.read(cr, uid, imd_ids)
+                ]
+        return ids
