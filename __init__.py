@@ -8,7 +8,6 @@ __all__ = ['Humanize', 'ir_model', 'date']
 from openerp.tools import DEFAULT_SERVER_DATETIME_FORMAT, DEFAULT_SERVER_DATE_FORMAT
 from openerp.exceptions import ERPError
 import dbf
-import ir_model
 import logging
 from pytz import timezone
 

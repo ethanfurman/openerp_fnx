@@ -87,11 +87,11 @@ class xmlid(object):
             # get any existing imd record
             imd = self.pool.get('ir.model.data')
             try:
-                record = imd.get_object_from_model_resid(cr, uid, model=self._name, res_id=rec.id)
-                if imd_name:
-                    imd.write(cr, uid, record.id, {'name':imd_name}, context=context)
-                else:
-                    imd.unlink(cr, uid, record.id, context=context)
+                for record in imd.browse(cr, uid, [('model','=',self._name),('res_id','=',rec.id)]):
+                    if imd_name and record.module in ('fis','whc'):
+                        imd.write(cr, uid, record.id, {'name':imd_name}, context=context)
+                    else:
+                        imd.unlink(cr, uid, record.id, context=context)
             except ValueError:
                 if imd_name:
                     imd.create(cr, uid, {'module':'whc', 'name':imd_name, 'model':self._name, 'res_id':rec.id, }, context=context)
@@ -113,9 +113,9 @@ class xmlid(object):
         if isinstance(ids, (int, long)):
             ids = [ids]
         res = super(xmlid, self).unlink(cr, uid, ids, context=context)
-        if res and not context.get('fis_maintenance', False):
-            imd = self.pool.get('ir.model.data')
-            ids = imd.get_ids_from_model_resid(cr, uid, model=self._name, res_id=ids)
-            if ids:
-                res = imd.unlink(cr, uid, ids, context=context)
+        # delete any matching ir.model.data records
+        imd = self.pool.get('ir.model.data')
+        imd_ids = imd.search(cr, uid, [('model','=',self._name), ('res_id','in', ids)])
+        if imd_ids:
+            res = imd.unlink(cr, uid, imd_ids, context=context)
         return res
