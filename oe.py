@@ -1,3 +1,4 @@
+from aenum import NamedTuple
 from openerp import SUPERUSER_ID
 from openerplib import AttrDict
 import email
@@ -7,6 +8,166 @@ import socket
 import time
 
 _logger = logging.getLogger(__name__)
+
+class MergeSelected(object):
+    """
+    Support merging user-selected records
+    """
+
+    def get_relations(self, cr, uid, oe_rel, context=None):
+        """
+        get tables that link to TABLE and that TABLE links to via _id fields
+
+        upstream  -->   self.table  --> downstream
+        inherits  --^
+        ( res.user      res.partner                )
+        ( sample.memo                  res.country )
+
+        `downstream` are tables pointed to by `self`'s fields
+        `upstream` are tables that point to `self`
+        `inheriting` are any `upstream` tables that form a logical record with `self`, and
+                     should not be updated to point to winning record
+        """
+        table = self._name
+        ir_model_fields = self.pool.get('ir.model.fields')
+        upstream = [
+                oe_rel(r['model'], r['name'])
+                for r in ir_model_fields.read(
+                    cr, uid,
+                    [('relation','=',table)],
+                    fields=['model','name'],
+                    )]
+        downstream = [
+                oe_rel(r['relation'], r['name'])
+                for r in ir_model_fields.read(
+                    cr, uid,
+                    [('model','=',table),('relation','!=','')],
+                    fields=['relation','name'],
+                    )]
+        # inheriting lists any tables in `upstream` that logically create a record with `table`
+        # inheriting tables are removed from upstream
+        inheriting = set()
+        for rel in upstream:
+            model = self.pool.get(rel.model)
+            if model is None:
+                continue
+            for table_name, field in model._inherits:
+                if table_name == table:
+                    inh_rel = oe_rel(rel.model, field)
+                    if inh_rel in upstream:
+                        inheriting.add(inh_rel)
+        upstream = list(set(upstream) - inheriting)
+        return upstream, downstream, inheriting
+
+    def merge(self, cr, uid, ids, prefer=[], context=None):
+        """
+        Combine multiple records into one, substituting the one where ever the removed records were.
+
+        `prefer` is a list of fields to use as tie-breakers, where not empty is better than empty.
+        """
+        context = context or {}
+        context['maintenance'] = True
+        inheriting_fields = [v for k,v in self._inherits]
+        fields = inheriting_fields + prefer
+        oe_rec_fields = inheriting_fields + prefer + [
+                'model', 'id', 'xmlid', 'tertiary',
+                'create_uid', 'create_date', 'write_uid', 'write_date',
+                ]
+        if 'xml_id' in self._columns:
+            fields.insert(0, 'xml_id')
+            oe_rec_fields.insert(0, 'xml_id')
+        OERec = NamedTuple('OERec', oe_rec_fields)
+        OERel = NamedTuple('OERel', ['model', 'field'])
+        upstream, downstream, inherited = self.get_relations(cr, SUPERUSER_ID, OERel, context=context)
+        # records = get_main_records(main_model, domain, dupe, tuple(inheriting_fields), use_empty)
+        records = self.read(cr, SUPERUSER_ID, ids, fields=fields, context=context)
+        # add the metadata
+        meta = dict(
+                (r['id'], r)
+                for r in self.meta_read(cr, SUPERUSER_ID, ids, details=True, context=context)
+                )
+        for i, rec in enumerate(records):
+            rec.update(meta[rec['id']])
+            records[i] = OERec(model=self._name, tertiary={}, **rec)
+        records = self.get_tertiary_ids(cr, SUPERUSER_ID, records, upstream, context=context)
+        primary, secondary = self.pick_one(records, prefer)
+        error = False
+        for rec in secondary:
+            for rel, ids in rec.tertiary.items():
+                model = self.pool.get(rel.model)
+                try:
+                    model.write(cr, SUPERUSER_ID, ids, {rel.field: primary.id}, context=context)
+                except Exception:
+                    _logger.exception('an error occurred')
+                    raise
+                else:
+                    self.unlink(cr, SUPERUSER_ID, [rec.id], context=context)
+        return not error
+
+    def get_tertiary_ids(self, cr, uid, records, upstream, context=None):
+        # records = [OERec, OERec, ...]
+        kept_records = []
+        relations = set()
+        for rec in records:
+            for rel in upstream:
+                u_table = self.pool.get(rel.model)
+                if u_table is None:
+                    # non-existent table
+                    continue
+                if not u_table._auto:
+                    # abstract table
+                    continue
+                if (
+                        rel.field not in u_table._all_columns
+                        # or rel.field in u_table._x2many_fields
+                        or u_table._columns[rel.field]._type in ('one2many','many2many')
+                        or not self.is_searchable(cr, uid, rel.model, rel.field, context=context)
+                    ):
+                    continue
+                u_records = u_table.read(
+                        cr, SUPERUSER_ID,
+                        [(rel.field,'=',rec.id)],
+                        fields=[rel.field],
+                        context=None,
+                        )
+                if not u_records:
+                    continue
+                u_ids = [t['id'] for t in u_records] 
+                if u_ids:
+                    rec.tertiary[rel] = u_ids
+                    relations.add(rel)
+            kept_records.append(rec)
+        return kept_records
+
+    def is_searchable(self, cr, uid, table, field, context=None):
+        desc = self.pool.get('ir.model.fields').read(cr, uid, [('model','=',table),('name','=',field)], fields=['selectable'], context=context)
+        return desc[0]['selectable']
+
+    def pick_one(self, records, prefer):
+        # given a group of records picks the one:
+        # - with an xmlid in the fis namespace
+        # - created by fis
+        # - created by admin
+        # - created earliest
+        #
+        # records = [OERec, OERec, ...]
+        if len(records) < 2:
+            abort('only one record!!')
+        def key(record):
+            # { rel1: ids1, res2: ids2, ...}
+            count = 0
+            for ids in record.tertiary.values():
+                count += len(ids)
+            if record.xmlid and record.xmlid.startswith(('fis.','whc.')):
+                is_fis = 1  # 1 means yes (sorts after 0)
+            else:
+                is_fis = 0  # 0 means no (sorts before 1)
+            preferred = sum([1 for p in prefer if getattr(record, p, None)])
+            return -is_fis, -preferred, -count, record.create_date
+        records.sort(key=lambda r: key(r))
+        primary = records.pop(0)
+        return primary, records
+
 
 class Normalize(object):
     """Adds support for normalizing character fields.
