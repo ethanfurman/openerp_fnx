@@ -152,7 +152,7 @@ class MergeSelected(object):
         #
         # records = [OERec, OERec, ...]
         if len(records) < 2:
-            abort('only one record!!')
+            return records.pop(), []
         def key(record):
             # { rel1: ids1, res2: ids2, ...}
             count = 0
