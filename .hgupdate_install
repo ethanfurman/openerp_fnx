@@ -1,0 +1,2 @@
+scripts/fnx_script_support.py /usr/local/bin/fnx_script_support.py
+scripts/fnx_script_support.py /opt/falcon/lib/python2.7/site-packages/fnx_script_support.py
