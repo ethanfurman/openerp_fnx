@@ -167,7 +167,7 @@ class SynchronizeType(ABCMeta):
             missing = []
             for setting in (
                     'TN', 'FN', 'RE', 'OE', 'F', 'IMD',
-                    'FIS_KEY', 'OE_KEY', 'FIS_IGNORE_RECORD', 'FIS_SCHEMA',
+                    'FIS_KEY', 'OE_KEY', 'FIS_SCHEMA',
                 ):
                 if getattr(cls, setting, empty) is empty:
                     missing.append(setting)
@@ -213,14 +213,21 @@ SynchronizeABC = SynchronizeType(
 class Synchronize(SynchronizeABC):
 
     FIS_ADDRESS_FIELDS = ()
-    FIS_IGNORE_RECORD = lambda self, rec: False
     OE_KEY_MODULE = None
     FIELDS_CHECK_IGNORE = ()
 
-    def FIS_IGNORE_RECORD(self, rec):
+    def oe_ignore_record(self, oe_rec):
         if self.extra.get('key_filter') is None:
             return False
-        elif self.extra['key_filter'] == rec[self.FIS_KEY]:
+        elif self.extra['key_filter'] == oe_rec[self.OE_KEY]:
+            return False
+        else:
+            return True
+
+    def fis_ignore_record(self, fis_rec):
+        if self.extra.get('key_filter') is None:
+            return False
+        elif self.extra['key_filter'] == fis_rec[self.FIS_KEY]:
             return False
         else:
             return True
@@ -248,10 +255,11 @@ class Synchronize(SynchronizeABC):
 
         If needed:
 
-            FIS_IGNORE_RECORD   -> function to determine if FIS record should be skipped
             OE_FIELDS_QUICK     -> OE fields to fetch for quick comparisons
             OE_KEY_MODULE       -> module field value or field and value, if any
             FIELDS_CHECK_IGNORE -> fields to ignore during integrity check
+            fis_ignore_record   -> function to determine if FIS record should be skipped
+            oe_ignore_record    -> function to determine if OE record should be skipped
         """
         self.dryrun = DRYRUN
         self.erp = connect
@@ -302,6 +310,9 @@ class Synchronize(SynchronizeABC):
             elif new is None:
                 if 'active' in old and not old.active:
                     # record is already inactive, ignore
+                    continue
+                if self.keep_oe_only_record(old):
+                    # user-entered record not in FIS yet?
                     continue
                 # no matching FIS record, so delete/deactivate the OE record
                 self.remove_records[key] = old
@@ -480,7 +491,7 @@ class Synchronize(SynchronizeABC):
                             string = prev + '\n' + string
                         errors[key]['oe'] = string
         if not errors:
-            echo('FIS and OpenERP records for %s/%d match (%d total)' % (self.FN.upper(), self.TN, len(all_keys)))
+            echo('FIS and OpenERP records for %s/%d match (%d total)' % (self.FN, self.TN, len(all_keys)))
         else:
             table = [('xml id', 'FIS', 'OpenERP'), None]
             i = 0
@@ -553,7 +564,7 @@ class Synchronize(SynchronizeABC):
         self.record_log = Table(
                 filename=(
                     '%s/%03d_%s-%s.dbf'
-                    % (path, self.TN, self.FN, DateTime.now().strftime('%Y_%m_%d-%H_%M_%S'))
+                    % (path, self.TN, self.FN.lower(), DateTime.now().strftime('%Y_%m_%d-%H_%M_%S'))
                     ),
                 field_specs=specs,
                 codepage='utf8',
@@ -668,7 +679,7 @@ class Synchronize(SynchronizeABC):
             key = tuple(key)
             new_records_map[key] = rec
         all_recs = set(new_records_map.keys() + old_records_map.keys())
-        ignore = self.FIS_IGNORE_RECORD
+        ignore = self.fis_ignore_record
         for key in all_recs:
             changed_values = []
             new_rec = new_records_map.get(key)
@@ -734,6 +745,9 @@ class Synchronize(SynchronizeABC):
                 ('name','in',xid_names),
                 ]
 
+    def keep_oe_only_record(self, oe_rec):
+        return False
+
     def log(self, action, *records):
         result = []
         for rec in records:
@@ -781,7 +795,7 @@ class Synchronize(SynchronizeABC):
         values = {'failure_': failure}
         values.update(record)
         self.log('failed', *(values, ))
-        self.errors['%s-%s-%s' % (self.F, self.FN, self.OE)][failure].append(record)
+        self.errors['%s-%s-%s' % (self.F, self.FN.lower(), self.OE)][failure].append(record)
 
     def normalize_fis(self, method):
         """
@@ -906,6 +920,8 @@ class Synchronize(SynchronizeABC):
             if self.extra.get('key_filter') is not None:
                 if self.extra['key_filter'] != rec[self.OE_KEY]:
                     continue
+            if self.oe_ignore_record(rec):
+                continue
             key = rec[self.OE_KEY]
             if module:
                 key = module, key
@@ -929,10 +945,13 @@ class Synchronize(SynchronizeABC):
                 message='adding $total records...',
                 view_type='percent',
             ):
+            # echo('\n%r -- %r -- %r' % (0, key, rec))
             [log_record] = self.log('add', rec)
             try:
+                # echo(1)
                 # make sure an x2many fields are in the correct format
                 for key, value in rec.items():
+                    # echo(2, key, value)
                     if key in self.model._x2many_fields:
                         if not value:
                             rec[key] = [(5, )]
@@ -946,9 +965,9 @@ class Synchronize(SynchronizeABC):
                                 ids.append(x)
                             rec[key] = [(6, 0, ids)]
                 if self.dryrun:
-                    return
+                    continue
                 else:
-                    new_id = self.model.create(rec)
+                    new_id = self.model.create(rec, context=self.context)
                     if log_record is not None:
                         with log_record:
                             log_record.id = new_id
@@ -1007,7 +1026,7 @@ class Synchronize(SynchronizeABC):
                 if self.dryrun:
                     return
                 else:
-                    self.model.write(ids, changes)
+                    self.model.write(ids, changes, context=self.context)
                     self.changed_count += len(ids)
             except Exception as exc:
                 self.log_exc(exc, changes)
@@ -1026,9 +1045,9 @@ class Synchronize(SynchronizeABC):
                 return
             else:
                 if action == 'delete':
-                    self.model.unlink(ids)
+                    self.model.unlink(ids, context=self.context)
                 else:
-                    self.model.write(ids, {'active': False})
+                    self.model.write(ids, {'active': False}, context=self.context)
             oe_records = self.oe_records.copy()
             self.oe_records.clear()
             self.oe_records.update(dict(
@@ -1048,9 +1067,9 @@ class Synchronize(SynchronizeABC):
                 self.log(action, rec)
                 try:
                     if action == 'deactivate':
-                        self.model.write(rec.id, {'active': False})
+                        self.model.write(rec.id, {'active': False}, context=self.context)
                     else:
-                        self.model.unlink(rec.id)
+                        self.model.unlink(rec.id, context=self.context)
                     self.deleted_count += 1
                     self.oe_records.pop(key)
                 except Fault as exc:
@@ -1067,6 +1086,9 @@ class Synchronize(SynchronizeABC):
         """
         generate all XmlLinks, and attach OE fields to them
         """
+        target_fields = set(fields + ['id', self.OE_KEY])
+        if FIS_MODULE and FIS_MODULE in self.OE_FIELDS:
+            target_fields.add(FIS_MODULE)
         for rec in self.get_xid_records(
                 self.erp,
                 domain=[
@@ -1074,7 +1096,7 @@ class Synchronize(SynchronizeABC):
                     ('model','=',self.OE),
                     ('name','=like','%s_%%_%s' % (self.F, self.IMD),)
                     ],
-                fields=list(set(fields + ['id', self.OE_KEY])),
+                fields=list(target_fields),
                 context=self.context,
             ):
             link = self.XmlLink(rec[self.OE_KEY], rec.id)
@@ -1145,7 +1167,7 @@ class Synchronize(SynchronizeABC):
             ids.add(rec.id)
         ids = list(ids)
         needed_fields = ['id', self.OE_KEY]
-        domain = [('id','not in',ids)]
+        domain = [('id','not in',ids or [0])]
         module_field = FIS_MODULE
         module_value = self.OE_KEY_MODULE
         if isinstance(module_value, tuple):
@@ -1153,6 +1175,7 @@ class Synchronize(SynchronizeABC):
         if module_value:
             domain.append((module_field,'=',module_value))
             needed_fields.append(module_field)
+        print('looking for %r' % domain, verbose=2)
         bare_oe_records = get_records(
                 self.erp,
                 self.OE,
