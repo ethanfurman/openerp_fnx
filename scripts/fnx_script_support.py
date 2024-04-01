@@ -21,7 +21,6 @@ from random import choice
 from scription import Exit, error, Job, OrmFile, print
 from time import mktime
 
-# notification support
 
 NOW = DateTime.now()
 TOMORROW = NOW.replace(delta_day=+1).date()
@@ -37,7 +36,6 @@ class Notify(object):
     """
     notifies users via email/text message when a script signals failure
     """
-
     def __init__(self, name, schedule=None, notified=None, cut_off=0, grace=13, stable=5, renotify=67):
         # name: name of script (used for notified file name)
         # schedule: file that holds user name, email, text, and availability
@@ -63,9 +61,14 @@ class Notify(object):
             self.renotify = cut_off
         else:
             section = settings.available[name]
-            self.grace_period = section.grace * MINUTE
-            self.stablized = section.stable * MINUTE
-            self.renotify = section.renotify * MINUTE
+            if section.priority == 'critical':
+                self.grace_period = 0
+                self.stablized = 30
+                self.renotify = 90
+            else:
+                self.grace_period = section.grace * MINUTE
+                self.stablized = section.stable * MINUTE
+                self.renotify = section.renotify * MINUTE
 
     def __call__(self, errors):
         """
