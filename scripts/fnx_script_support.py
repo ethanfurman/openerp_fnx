@@ -54,7 +54,9 @@ class Notify(object):
         settings = OrmFile(self.schedule)
         if name not in settings.available:
             raise ValueError("%r not in '%s'" % (name, SCHEDULE))
+        print('name: %r    cut off: %r' % (name, cut_off))
         if cut_off:
+            print('using cut off value of %r' % cut_off, verbose=2)
             cut_off = timedelta(seconds=cut_off * 60)
             self.grace_period = 0
             self.stablized = cut_off
@@ -62,10 +64,12 @@ class Notify(object):
         else:
             section = settings.available[name]
             if section.priority == 'critical':
+                print('using critical', verbose=2)
                 self.grace_period = 0
                 self.stablized = 30
                 self.renotify = 90
             else:
+                print('using section %r:\n  %s' % (name, '\n  '.join('%s: %r' % s for s in section)), verbose=2)
                 self.grace_period = section.grace * MINUTE
                 self.stablized = section.stable * MINUTE
                 self.renotify = section.renotify * MINUTE
