@@ -2,6 +2,7 @@ from __future__ import print_function
 from collections import defaultdict
 from sys import exc_info
 
+import codecs
 import errno
 import os
 import re
@@ -190,6 +191,8 @@ class SynchronizeType(ABCMeta):
                 setattr(cls, 'OE_FIELDS_LONG', cls.OE_FIELDS)
             if not getattr(cls, 'OE_FIELDS_QUICK', None):
                 setattr(cls, 'OE_FIELDS_QUICK', cls.OE_FIELDS_LONG)
+            if not getattr(cls, 'OE_FIELDS', None):
+                setattr(cls, 'OE_FIELDS', cls.OE_FIELDS_LONG)
             # create XmlLinks if needed
             for name, obj in clsdict.items():
                 if obj is XmlLink:
@@ -785,8 +788,9 @@ class Synchronize(SynchronizeABC):
             try:
                 self.record_log.append(values)
                 result.append(self.record_log.last_record)
-            except ValueError:
+            except Exception as e:
                 self.record_log.append(None)
+                result.append(None)
                 error('unable to log %r' % (values, ))
         return result
 
