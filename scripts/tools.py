@@ -798,7 +798,7 @@ class Synchronize(SynchronizeABC):
                 self.record_log.append(None)
                 result.append(None)
                 error('error logging values:\n%s' % pformat(values), border='box')
-                error(''.join(format_exception(*exc_info())).strip()))
+                error(''.join(format_exception(*exc_info())).strip())
         return result
 
     def log_exc(self, exc, record):
