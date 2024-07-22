@@ -771,6 +771,11 @@ class Synchronize(SynchronizeABC):
                     v = v.value if v else None
                 elif isinstance(v, basestring):
                     if not v: v = None
+                    elif isinstance(v, bytes):
+                        try:
+                            v = bytes.decode('utf8')
+                        except UnicodeDecodeError:
+                            v = u'invalid bytes in data'
                 elif isinstance(v, (bool, int, long, float)):
                     pass
                 elif isinstance(v, (Date, DateTime, Time, NoneType)):
