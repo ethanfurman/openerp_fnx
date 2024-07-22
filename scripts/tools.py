@@ -16,6 +16,7 @@ from dbf import NoneType, NullType, Char, Logical
 from fnx_script_support import grouped_by_column
 from openerplib import DEFAULT_SERVER_DATE_FORMAT, get_records, get_xid_records, XidRec
 from openerplib import Fault, PropertyNames, IDEquality, ValueEquality, Many2One, SetOnce
+from pprint import pformat
 from scription import print, echo, error, ViewProgress, script_verbosity, abort, empty
 from traceback import format_exception
 from VSS.address import cszk, Rise, Sift, AddrCase, BsnsCase, NameCase, PostalCode
@@ -796,7 +797,8 @@ class Synchronize(SynchronizeABC):
             except Exception as e:
                 self.record_log.append(None)
                 result.append(None)
-                error('unable to log %r' % (values, ))
+                error('unable to log %r' % pformat(values))
+                error(format_exception(''.join(format_exception(*exc_info())).strip()))
         return result
 
     def log_exc(self, exc, record):
