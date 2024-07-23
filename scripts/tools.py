@@ -2,7 +2,6 @@ from __future__ import print_function
 from collections import defaultdict
 from sys import exc_info
 
-import codecs
 import errno
 import os
 import re
@@ -619,8 +618,18 @@ class Synchronize(SynchronizeABC):
         imd_names = set()
         oe_module = self.OE_KEY_MODULE
         for old, new, diffs in changes:
-            old_entries = self.convert_fis_rec(old)
-            new_entries = self.convert_fis_rec(new)
+            try:
+                old_entries = self.convert_fis_rec(old)
+                new_entries = self.convert_fis_rec(new)
+            except Exception:
+                error('unable to convert %s record %r\n\n%s' % (
+                        self.__class__.__name__,
+                        old.rec[0],
+                        ''.join(format_exception(*exc_info())).strip(),
+                        ),
+                        border='box',
+                      )
+                continue
             for old_rec, new_rec in zip(old_entries, new_entries):
                 if old_rec != new_rec:
                     key = new_rec[self.OE_KEY]
@@ -794,7 +803,7 @@ class Synchronize(SynchronizeABC):
             try:
                 self.record_log.append(values)
                 result.append(self.record_log.last_record)
-            except Exception as e:
+            except Exception:
                 self.record_log.append(None)
                 result.append(None)
                 error('error logging values:\n%s' % pformat(values), border='box')
