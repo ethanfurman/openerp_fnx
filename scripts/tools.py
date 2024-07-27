@@ -364,23 +364,31 @@ class Synchronize(SynchronizeABC):
         - no duplicate keys in OE
         - each record in FIS matches a record in OE
         - vice versa
+        - all used FIS fields transformable
         """
         errors = {}
         # load fis records
         fis_dupes = {}
+        fis_errors = []
         fis_records = self.fis_records
         self.open_fis_tables()
         for entry in ViewProgress(
                 self.fis_table.values(),
                 message='converting $total FIS records',
             ):
-            for rec in self.convert_fis_rec(entry, use_ignore=True):
-                if rec is None:
-                    continue
-                key = rec[self.OE_KEY]
-                if key in fis_records:
-                    fis_dupes.setdefault(key, []).append(rec)
-                fis_records[key] = rec
+            try:
+                for rec in self.convert_fis_rec(entry, use_ignore=True):
+                    if rec is None:
+                        continue
+                    key = rec[self.OE_KEY]
+                    if key in fis_records:
+                        fis_dupes.setdefault(key, []).append(rec)
+                    fis_records[key] = rec
+            except Exception:
+                fis_errors.append((
+                        entry.rec[0],
+                        ''.join(format_exception(*exc_info())).strip(),
+                        ))
         # load openerp records
         oe_dupes = {}
         domain = []
@@ -596,12 +604,23 @@ class Synchronize(SynchronizeABC):
         print('loading current FIS data...', end=' ')
         oe_module = self.OE_KEY_MODULE
         for entry in self.fis_table.values():
-            for rec in self.convert_fis_rec(entry, use_ignore=True):
-                key = rec[self.OE_KEY]
-                if oe_module:
-                    key = oe_module, key
-                self.fis_records[key] = rec
+            try:
+                for rec in self.convert_fis_rec(entry, use_ignore=True):
+                    key = rec[self.OE_KEY]
+                    if oe_module:
+                        key = oe_module, key
+                    self.fis_records[key] = rec
+            except Exception:
+                error('unable to convert %s record %r\n\n%s' % (
+                        self.__class__.__name__,
+                        entry.rec[0],
+                        ''.join(format_exception(*exc_info())).strip(),
+                        ),
+                        border='box',
+                      )
         print('%d records retrieved' % len(self.fis_records))
+        if len(self.fis_records) == 0:
+            raise ValueError('no valid records found in %s' % self.__class__.__name__)
         print('  ', '\n   '.join(str(r) for r in self.fis_records.values()), verbose=3)
         return None
 
@@ -622,6 +641,7 @@ class Synchronize(SynchronizeABC):
                 old_entries = self.convert_fis_rec(old)
                 new_entries = self.convert_fis_rec(new)
             except Exception:
+                # the `rec[0]` will be identical regardless of which  convert line fails
                 error('unable to convert %s record %r\n\n%s' % (
                         self.__class__.__name__,
                         old.rec[0],
@@ -638,19 +658,39 @@ class Synchronize(SynchronizeABC):
                     self.fis_records[key] = new_rec
                     imd_names.add(new_rec._imd.name)
         for entry in added:
-            for rec in self.convert_fis_rec(entry):
-                key = rec[self.OE_KEY]
-                if oe_module:
-                    key = oe_module, key
-                self.fis_records[key] = rec
-                imd_names.add(rec._imd.name)
+            try:
+                for rec in self.convert_fis_rec(entry):
+                    key = rec[self.OE_KEY]
+                    if oe_module:
+                        key = oe_module, key
+                    self.fis_records[key] = rec
+                    imd_names.add(rec._imd.name)
+            except Exception:
+                error('unable to convert %s record %r\n\n%s' % (
+                        self.__class__.__name__,
+                        entry.rec[0],
+                        ''.join(format_exception(*exc_info())).strip(),
+                        ),
+                        border='box',
+                      )
+                continue
         for entry in deleted:
-            for rec in self.convert_fis_rec(entry):
-                key = rec[self.OE_KEY]
-                if oe_module:
-                    key = oe_module, key
-                self.fis_records[key] = rec
-                imd_names.add(rec._imd.name)
+            try:
+                for rec in self.convert_fis_rec(entry):
+                    key = rec[self.OE_KEY]
+                    if oe_module:
+                        key = oe_module, key
+                    self.fis_records[key] = rec
+                    imd_names.add(rec._imd.name)
+            except Exception:
+                error('unable to convert %s record %r\n\n%s' % (
+                        self.__class__.__name__,
+                        entry.rec[0],
+                        ''.join(format_exception(*exc_info())).strip(),
+                        ),
+                        border='box',
+                      )
+                continue
         return tuple(imd_names)
 
     def get_fis_changes(self, key=None):
@@ -783,7 +823,7 @@ class Synchronize(SynchronizeABC):
                     if not v: v = None
                     elif isinstance(v, bytes):
                         try:
-                            v = bytes.decode('utf8')
+                            v = v.decode('utf8')
                         except UnicodeDecodeError:
                             v = u'invalid bytes in data'
                 elif isinstance(v, (bool, int, long, float)):
@@ -1161,6 +1201,8 @@ class Synchronize(SynchronizeABC):
             self.record_additions()
             self.record_changes()
             self.global_updates()
+        except Exception:
+            pass
         finally:
             if method in ('quick', 'full'):
                 print()
