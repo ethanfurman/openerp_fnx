@@ -58,16 +58,16 @@ class Notify(object):
         if cut_off:
             print('using cut off value of %r' % cut_off, verbose=2)
             cut_off = timedelta(seconds=cut_off * 60)
-            self.grace_period = 0
+            self.grace_period = 0 * MINUTE
             self.stablized = cut_off
             self.renotify = cut_off
         else:
             section = settings.available[name]
             if section.priority == 'critical':
                 print('using critical', verbose=2)
-                self.grace_period = 0
-                self.stablized = 30
-                self.renotify = 90
+                self.grace_period = 0 * MINUTE
+                self.stablized = 30 * MINUTE
+                self.renotify = 90 * MINUTE
             else:
                 print('using section %r:\n  %s' % (name, '\n  '.join('%s: %r' % s for s in section)), verbose=2)
                 self.grace_period = section.grace * MINUTE
