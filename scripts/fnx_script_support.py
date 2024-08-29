@@ -474,6 +474,60 @@ def hrtd(td):
             res.append('%d minute' % minutes)
     return ', '.join(res)
 
+time_units = {'d':86400, 'h':3600, 'm':60, 's':1}
+
+def time2seconds(time):
+    "convert time to seconds (e.g. 2m -> 120)"
+    # if all digits, must be seconds already
+    if not time:
+        return 0
+    elif isinstance(time, (int, long)):
+        return time
+    text = time
+    if text[0] == '-':
+        sign = -1
+        text = text[1:]
+    else:
+        sign = +1
+    if text.isdigit():
+        return sign * int(text)
+    result = 0
+    digits = []
+    for c in text:
+        if c.isdigit():
+            digits.append(c)
+            continue
+        number = int(''.join(digits))
+        c = c.lower()
+        if c not in ('dhms'):
+            raise ValueError('invalid wait time: %r' % time)
+        result += time_units[c] * number
+        digits = []
+    else:
+        if digits:
+            # didn't specify a unit, abort
+            raise ValueError('missing trailing time unit of d, h, m, or s in %r' % time)
+    return result
+
+def seconds2time(seconds, negative=False):
+    if isinstance(seconds, timedelta):
+        seconds = seconds.total_seconds
+    if seconds < 0 and not negative:
+        raise ValueError('seconds cannot be negative')
+    days, seconds = divmod(seconds, 60*60*24)
+    hours, seconds = divmod(seconds, 60*60)
+    minutes, seconds = divmod(seconds, 60)
+    res = []
+    if days:
+        res.append('%d d' % days)
+    if hours:
+        res.append('%d h' % hours)
+    if minutes:
+        res.append('%d m' % minutes)
+    if seconds:
+        res.append('%d s' % seconds)
+    return ' '.join(res)
+
 class xrange(object):
     '''
     accepts arbitrary objects to use to produce sequences
