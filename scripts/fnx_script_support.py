@@ -483,8 +483,8 @@ def time2seconds(time):
         return 0
     elif isinstance(time, (int, long)):
         return time
-    text = time
-    if text[0] == '-':
+    text = time.replace(' ','')
+    if text[0] == '-': 
         sign = -1
         text = text[1:]
     else:
@@ -507,25 +507,29 @@ def time2seconds(time):
         if digits:
             # didn't specify a unit, abort
             raise ValueError('missing trailing time unit of d, h, m, or s in %r' % time)
-    return result
+    return sign * result
 
-def seconds2time(seconds, negative=False):
+def seconds2time(seconds):
     if isinstance(seconds, timedelta):
         seconds = seconds.total_seconds
-    if seconds < 0 and not negative:
-        raise ValueError('seconds cannot be negative')
+    sign = +1
+    if seconds < 0:
+        sign = -1
+        seconds = -seconds
     days, seconds = divmod(seconds, 60*60*24)
     hours, seconds = divmod(seconds, 60*60)
     minutes, seconds = divmod(seconds, 60)
     res = []
     if days:
-        res.append('%d d' % days)
+        res.append('%dd' % days)
     if hours:
-        res.append('%d h' % hours)
+        res.append('%dh' % hours)
     if minutes:
-        res.append('%d m' % minutes)
-    if seconds:
-        res.append('%d s' % seconds)
+        res.append('%dm' % minutes)
+    if seconds or not res:
+        res.append('%ds' % seconds)
+    if sign < 0:
+        res[0] = '-' + res[0]
     return ' '.join(res)
 
 class xrange(object):
