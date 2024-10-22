@@ -328,7 +328,11 @@ class Synchronize(SynchronizeABC):
                     continue
                 changes = {}
                 for field in self.OE_FIELDS:
-                    if old[field] != new[field]:
+                    try:
+                        different = old[field] != new[field]
+                    except UnicodeError:
+                        different = True
+                    if different:
                         if not old[field] and not new[field]:
                             print('old', old, verbose=2)
                             print('new', new, verbose=2)
