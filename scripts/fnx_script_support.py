@@ -511,7 +511,7 @@ def time2seconds(time):
 
 def seconds2time(seconds):
     if isinstance(seconds, timedelta):
-        seconds = seconds.total_seconds
+        seconds = seconds.total_seconds()
     sign = +1
     if seconds < 0:
         sign = -1
