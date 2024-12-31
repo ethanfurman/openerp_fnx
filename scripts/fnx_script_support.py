@@ -402,15 +402,22 @@ def all_equal(iterator, test=None):
 class Sentinel(object):
     "provides better help for sentinels"
     #
-    def __init__(self, text, boolean=True):
+    def __init__(self, repr=None, text=None, boolean=True):
+        if repr is None:
+            repr = text
+        if text is None:
+            text = repr
+        if repr is None:
+            raise ValueError('neither repr nor text specified')
+        self.repr = repr
         self.text = text
         self.boolean = boolean
     #
     def __repr__(self):
-        return "%s(%r, bool=%r)" % (self.text, self.boolean)
+        return "%s(%r, bool=%r)" % (self.__class__.__name__, self.repr, self.boolean)
     #
     def __str__(self):
-        return '<%s>' % self.text
+        return '%s' % self.text
     #
     def __bool__(self):
         return self.boolean
