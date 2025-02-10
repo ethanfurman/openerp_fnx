@@ -32,6 +32,8 @@ NOTIFIED = BASE / 'var/notified.'
 
 SCRIPT_NAME = None
 
+## API
+
 class Notify(object):
     """
     notifies users via email/text message when a script signals failure
