@@ -2,7 +2,5 @@ scripts/fnx_script_support.py $packages/fnx_script_support.py
 scripts/fnx_script_support.py $local/fnx_script_support.py
 scripts/address.py $fislib/address.py
 scripts/constants.py $fislib/constants.py
-scripts/time_machine.py $fislib/time_machine.py
 scripts/tools.py $fislib/tools.py
-scripts/tools.py $fislib/tools.py
-scripts/tools.py $fislib/tools.py
+scripts/utils.py $fislib/utils.py
