@@ -2056,14 +2056,12 @@ class Model(object):
 
 
 class FISenum(str, Enum):
-    #
+
     _init_ = 'value sequence'
     _order_ = lambda m: m.sequence
-    #
+
     FIS_names = LazyClassAttr(set)
     FIS_sequence = LazyClassAttr(dict)
-    #
-    tables = {}
 
     def __new__(cls, value, sequence):
         enum = str.__new__(cls, value)
@@ -2082,17 +2080,6 @@ class FISenum(str, Enum):
         cls.FIS_sequence[sequence] = enum
         return enum
 
-    def __init_subclass__(cls):
-        key, name, number = cls._table_info
-        cls.FISkey = key
-        cls.FISname = name
-        cls.FISnumber = number
-        del cls._table_info
-        if name:
-            FISenum.tables[name] = cls
-        if number:
-            FISenum.tables[number] = cls
-
     def __repr__(self):
         return "<%s.%s>" % (self.__class__.__name__, self._name_)
 
@@ -2103,13 +2090,6 @@ class FISenum(str, Enum):
         except KeyError:
             raise AttributeError('unable to find sequence %r in %r' % (sequence, cls.FIS_sequence))
 
-    class Info(object):
-        def __init__(self, key, name, number=None):
-            self.key = key
-            self.name = name
-            self.number = number
-        def __get__(self):
-            return self.key, self.name, self.number
 
 class allow_exception(object):
 
