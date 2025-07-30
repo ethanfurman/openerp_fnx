@@ -214,7 +214,7 @@ SynchronizeABC = SynchronizeType(
         )
 
 class Synchronize(SynchronizeABC):
-
+    #
     FIS_ADDRESS_FIELDS = ()
     OE_KEY_MODULE = None
     FIELDS_CHECK_IGNORE = ()
@@ -1197,7 +1197,7 @@ class Synchronize(SynchronizeABC):
             names = self.load_fis_data()    # load fis data
             # an empty tuple is possible with method=QUICK and no changes/additions/deletions
             # in which case we don't want to do anything else
-            if names != ():
+            if method == 'full' or names != ():
                 self.oe_load_data(names)        # load oe data
                 self.normalize_fis(method)      # adjust fis data as needed
                 self.categorize()               # split into changed, added, deleted groups
@@ -1205,8 +1205,8 @@ class Synchronize(SynchronizeABC):
             self.record_additions()
             self.record_changes()
             self.global_updates()
-        except Exception:
-            pass
+        except Exception as e:
+            error(e)
         finally:
             if method in ('quick', 'full'):
                 print()
@@ -1986,7 +1986,7 @@ def compare_records(old_records, new_records, ignore=lambda r: False):
 
 
 class Model(object):
-
+    #
     models = []
     errors = defaultdict(list)
 
@@ -2112,9 +2112,10 @@ class ProductLabelDescription(object):
     ingredients_text = ''
     recipe_text = ''
 
-    def __init__(self, item_code, label_dir='/mnt/labeltime/Labels'):
+    def __init__(self, item_code, label_dir='/mnt/newlabeltimexpvm/xfer/LabelDirectory'):
         self.item_code = item_code
         self.label_dir = label_dir
+        self.label_type = None
         self.process()
 
     def label_text(self, label_type, leadin):
@@ -2129,22 +2130,29 @@ class ProductLabelDescription(object):
         filename = r'%s/%s/%s%s.spl' % (self.label_dir, self.item_code, self.item_code, label_type)
         if label_type.upper() == 'CC' and os.path.isfile("%so-r-i-g" % filename):
             return "%so-r-i-g" % filename
-        if os.path.isfile(filename):
-            return filename
         return filename        
 
     def process(self):
-        try:
-            lines = self.label_text('B',".91100")
-        except IOError as exc1:
+        lines = []
+        exc = None
+        for ltype, leadin in (
+                ('B', '.91100'),
+                ('TT', '.91100'),
+                ('', '.91100'),
+            ):
             try:
-                lines = self.label_text('TT',".91100")
-            except IOError as exc2:
-                lines = []
-                if exc1.errno not in (errno.ENOENT, errno.ENOTDIR):   # no such file or directory / not a directory
-                    warnings.warn('item %r: %s' % (self.item_code, exc1))
-                elif exc2.errno not in (errno.ENOENT, errno.ENOTDIR):
-                    warnings.warn('item %r: %s' % (self.item_code, exc1))
+                lines = self.label_text(ltype, leadin)
+                if lines:
+                    exc = None
+                    self.label_type = ltype
+                    break
+            except IOError as e:
+                if exc is None:
+                    exc = e
+        else:
+            if exc is None:
+                exc = IOError(error.ENOENT, '%s: no spool file found' % self.item_code)
+            # raise exc
         lines.sort()
         found = None
         self.ingredients = []
