@@ -1,6 +1,7 @@
 from aenum import Enum, IntEnum
 from datetime import timedelta
 from dbf import Date
+from enhlib.misc import basestring
 
 import dbf
 
@@ -33,7 +34,7 @@ class AutoEnum(Enum):
         1  = auto-number w/ docstring
         2+ = needs custom __init__
         """
-        if len(args) == 1 and isinstance(args[0], (str, unicode)):
+        if len(args) == 1 and isinstance(args[0], basestring):
             self.__doc__ = args[0]
         elif args:
             raise TypeError('%s not dealt with -- need custom __init__' % (args,))

@@ -12,15 +12,15 @@ from aenum import Enum, Flag, NamedConstant, NamedTuple
 from antipathy import Path
 from dbf import Date, DateTime, Time, Table, READ_WRITE
 from dbf import NoneType, NullType, Char, Logical
+from fislib.address import cszk, Rise, Sift, AddrCase, BsnsCase, NameCase, PostalCode
+from fislib.BBxXlate.fisData import fisData
+from fislib.utils import all_equal, LazyClassAttr
 from fnx_script_support import grouped_by_column
 from openerplib import DEFAULT_SERVER_DATE_FORMAT, get_records, get_xid_records, XidRec
 from openerplib import Fault, PropertyNames, IDEquality, ValueEquality, Many2One, SetOnce
 from pprint import pformat
 from scription import print, echo, error, ViewProgress, script_verbosity, abort, empty
 from traceback import format_exception
-from VSS.address import cszk, Rise, Sift, AddrCase, BsnsCase, NameCase, PostalCode
-from VSS.BBxXlate.fisData import fisData
-from VSS.utils import all_equal, LazyClassAttr
 
 virtualenv = os.environ['VIRTUAL_ENV']
 
