@@ -22,7 +22,7 @@ from pprint import pformat
 from scription import print, echo, error, ViewProgress, script_verbosity, abort, empty
 from traceback import format_exception
 
-virtualenv = os.environ['VIRTUAL_ENV']
+virtualenv = os.environ.get('VIRTUAL_ENV', '/opt/openerp')
 
 class K(NamedConstant):
     OE7 = 0
