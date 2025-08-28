@@ -213,30 +213,33 @@ def fix_date(text, format='mdy', delta_year=0):
     '''takes mmddyy (with yy in hex (A0 = 2000)) and returns a Date
     
     delta is the number of years to add/subtract from the final date'''
-    text = text.strip()
-    if len(text) != 6:
-        return None
-    if format == 'mdy':
-        yyyy, mm, dd = text[4:], text[:2], text[2:4]
-    elif format == 'ymd':
-        yyyy, mm, dd = text[:2], text[2:4], text[4:]
     try:
-        yyyy = int(yyyy) + 1900
-    except ValueError:
-        yyyy = int(yyyy, 16) - 160 + 2000
-    mm = int(mm)
-    dd = int(dd)
-    # auto-back day to inside month if needed
-    original_exception = None
-    for dd in range(dd, min(dd-1, 27), -1):
+        text = text.strip()
+        if len(text) != 6:
+            return None
+        if format == 'mdy':
+            yyyy, mm, dd = text[4:], text[:2], text[2:4]
+        elif format == 'ymd':
+            yyyy, mm, dd = text[:2], text[2:4], text[4:]
         try:
-            return Date(yyyy, mm, dd).replace(delta_year=delta_year)
-        except Exception as exc:
-            if original_exception is None:
-                original_exception = exc
-            continue
-    else:
-        raise original_exception
+            yyyy = int(yyyy) + 1900
+        except ValueError:
+            yyyy = int(yyyy, 16) - 160 + 2000
+        mm = int(mm)
+        dd = int(dd)
+        # auto-back day to inside month if needed
+        original_exception = None
+        for dd in range(dd, min(dd-1, 27), -1):
+            try:
+                return Date(yyyy, mm, dd).replace(delta_year=delta_year)
+            except Exception as exc:
+                if original_exception is None:
+                    original_exception = exc
+                continue
+        else:
+            raise original_exception
+    except Exception:
+        return None
 
 def date(year, month=None, day=None):
     if not year:
