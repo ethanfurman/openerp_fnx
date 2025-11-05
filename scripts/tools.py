@@ -2,10 +2,8 @@ from __future__ import print_function
 from collections import defaultdict
 from sys import exc_info
 
-import errno
 import os
 import re
-import warnings
 
 from abc import ABCMeta, abstractmethod
 from aenum import Enum, Flag, NamedConstant, NamedTuple
@@ -2108,7 +2106,7 @@ class allow_exception(object):
 
 
 class ProductLabelDescription(object):
-
+    #
     ingredients_text = ''
     recipe_text = ''
 
@@ -2117,6 +2115,18 @@ class ProductLabelDescription(object):
         self.label_dir = label_dir
         self.label_type = None
         self.process()
+
+    @classmethod
+    def update(fis_id, src_dir, dst_dir):
+        """
+        replace existing copies with fresh copies
+        """
+        for label_type in ('', 'B', 'TT'):
+            fn = '%s%s.spl' % (fis_id, label_type)
+            if src_dir.exists(fn):
+                src_dir.unlink(fn)
+            if dst_dir.exists(fn):
+                dst_dir.copy(fn, src_dir/fn)
 
     def label_text(self, label_type, leadin):
         lines = [
@@ -2155,19 +2165,17 @@ class ProductLabelDescription(object):
             # raise exc
         lines.sort()
         found = None
-        self.ingredients = []
-        self.ingredientLines = []
+        ingredients = []
         for line in lines:
             if line[15:].startswith("INGREDIENTS:"):
                 found = line[:7]
             if line[:7] == found:
                 txt = line[15:]
-                self.ingredients.append(txt)
-                self.ingredientLines.append(line)
+                ingredients.append(txt)
         ingr_text = []
         instr_text = []
         target = ingr_text
-        for fragment in self.ingredients:
+        for fragment in ingredients:
             for sentinel in recipe_sentinels:
                 if re.match(sentinel, fragment, re.I):
                     target = instr_text
