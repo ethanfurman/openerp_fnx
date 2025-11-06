@@ -2116,17 +2116,18 @@ class ProductLabelDescription(object):
         self.label_type = None
         self.process()
 
-    @classmethod
+    @staticmethod
     def update(fis_id, src_dir, dst_dir):
         """
         replace existing copies with fresh copies
         """
+        src_dir = src_dir / fis_id
         for label_type in ('', 'B', 'TT'):
             fn = '%s%s.spl' % (fis_id, label_type)
-            if src_dir.exists(fn):
-                src_dir.unlink(fn)
             if dst_dir.exists(fn):
-                dst_dir.copy(fn, src_dir/fn)
+                dst_dir.unlink(fn)
+            if src_dir.exists(fn):
+                src_dir.copy(fn, dst_dir/fn)
 
     def label_text(self, label_type, leadin):
         lines = [
