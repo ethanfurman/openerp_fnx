@@ -2138,7 +2138,10 @@ class ProductLabelDescription(object):
         return lines
 
     def label_file(self, label_type):
-        filename = r'%s/%s/%s%s.spl' % (self.label_dir, self.item_code, self.item_code, label_type)
+        if '/mnt/' in self.label_dir:
+            filename = r'%s/%s/%s%s.spl' % (self.label_dir, self.item_code, self.item_code, label_type)
+        else:
+            filename = r'%s/%s%s.spl' % (self.label_dir, self.item_code, label_type)
         if label_type.upper() == 'CC' and os.path.isfile("%so-r-i-g" % filename):
             return "%so-r-i-g" % filename
         return filename        
