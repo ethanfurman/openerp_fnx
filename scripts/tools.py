@@ -1321,7 +1321,13 @@ class SynchronizeAddress(Synchronize):
                 fis_rec[schema.addr2],
                 fis_rec[schema.addr3],
                 )
-        name, do_not_use, addr1, addr2, city, state, postal, country = process_name_address(address_lines)
+        name, do_not_use, addr1, addr2, city, state, postal, country, email_lines = process_name_address(address_lines)
+        if email_lines:
+            # stuff into address lines
+            if addr2:
+                addr1 = ' / '.join([addr1, addr2])
+            addr2 = ', '.join([e.strip(',;') for e in email lines])
+            addr1, addr2 = Rise(addr1, addr2)
         if home:
             sf = 'home_street'
             s2f = 'home_street2'
@@ -1694,7 +1700,7 @@ def tokenize_address_line(line):
     return valid, final, tokens
 
 def process_name_address(address):
-    name, do_not_use, address_lines = split_name_address(address)
+    name, do_not_use, address_lines, email_lines = split_name_address(address)
     # move STORE lines from address to name
     for line in address_lines[:]:
         if line.startswith('STORE '):
@@ -1800,7 +1806,7 @@ def process_name_address(address):
         addr1, addr2 = address_lines
     except ValueError:
         raise ValueError("need two address_lines, but received %r" % (address_lines, ))
-    return name, do_not_use, addr1, addr2, city, state, postal, country
+    return name, do_not_use, addr1, addr2, city, state, postal, country, email_lines
 
 def split_name_address(lines):
     """
@@ -1813,12 +1819,40 @@ def split_name_address(lines):
     #   (or an address)
     #   (or a ** line to be ignored)
     if not lines[0].strip():
-        return [], [], [l.strip() for l in lines[1:]]
+        return [], [], [l.strip() for l in lines[1:]], []
+    # check first line (name) for email directive
     lines = [smart_upper(l) for l in Rise(lines) if l.strip()]
     ignore = []
+    email = []
     lines_to_check = []
+    #
+    # separate out email and ignore lines
+    #
+    need_e_addr = None
     for line in lines:
-        if line.strip().startswith((
+        email_addr_match = re.search(r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b', line)
+        email_match = re.search(r'\b(email|website|inv per scan)\b', line, re.I)
+        if 'DO NOT MAIL' in line or 'ATTACH TO' in line:
+            lines_to_check.append(line)
+        elif email_match or email_addr_match:
+            email.append(line.lower().strip('- *'))
+            if email_addr_match:
+                need_e_addr = False
+            elif need_e_addr is None:
+                need_e_addr = True
+        elif need_e_addr:
+            test_email = (email[-1] + line).lower()
+            email_addr_match = re.search(r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b', test_email)
+            if not email_addr_match:
+                email.append(line.lower())
+                continue
+            need_e_addr = False
+            e_start = email_addr_match.start()
+            email[-1] = test_email[:e_start].strip()
+            if not email[-1]:
+                email.pop()
+            email.append(test_email[e_start:].strip())
+        elif line.strip().startswith((
                 '*',
                 'ACCOUNT CLOSED',
                 'BUSINESS CLOSED',
@@ -1831,6 +1865,8 @@ def split_name_address(lines):
         else:
             lines_to_check.append(line)
     lines = lines_to_check
+    if not lines and email:
+        lines = [email[0].upper()]
     if len(lines) > 1 and not lines[1].startswith(('LOCKBOX', 'DEPT', 'ATTN', 'PO', 'ADDITION')):
         # look for three lines in two
         test = ' '.join(lines[:2])
@@ -1861,12 +1897,17 @@ def split_name_address(lines):
                 lines[2] = lines[2][8:]
             line = ' '.join(lines[:2])
             lines[:2] = [line]
+        # look for trailing/leading '-'
+        elif lines[0].endswith(' -') or lines[1].startswith('- '):
+            if '/' in lines[1]:
+                lines[1:2] = [l.strip() for l in lines[1].split('/')]
+            lines[0] = ' - '.join([lines[0].rstrip('- '), lines.pop(1).lstrip(' -')])
     name = lines[0:1]
     lines = lines[1:]
     # now check if first two of the remaining lines can be combined
     if len(lines) > 1 and (lines[0].endswith(' &') or lines[1].startswith('& ')):
         lines[0] = '%s %s' % (lines[0], lines.pop(1))
-    return name, ignore, lines
+    return name, ignore, lines, email
 
 def smart_upper(string):
     words = string.split()
