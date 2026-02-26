@@ -1326,7 +1326,7 @@ class SynchronizeAddress(Synchronize):
             # stuff into address lines
             if addr2:
                 addr1 = ' / '.join([addr1, addr2])
-            addr2 = ', '.join([e.strip(',;') for e in email lines])
+            addr2 = ', '.join([e.strip(',;') for e in email_lines])
             addr1, addr2 = Rise(addr1, addr2)
         if home:
             sf = 'home_street'
