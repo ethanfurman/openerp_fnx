@@ -14,6 +14,7 @@ from fislib.address import cszk, Rise, Sift, AddrCase, BsnsCase, NameCase, Posta
 from fislib.BBxXlate.fisData import fisData
 from fislib.utils import all_equal, LazyClassAttr
 from fnx_script_support import grouped_by_column
+from logging import getLogger
 from openerplib import DEFAULT_SERVER_DATE_FORMAT, get_records, get_xid_records, XidRec
 from openerplib import Fault, PropertyNames, IDEquality, ValueEquality, Many2One, SetOnce
 from pprint import pformat
@@ -262,6 +263,10 @@ class Synchronize(SynchronizeABC):
             fis_ignore_record   -> function to determine if FIS record should be skipped
             oe_ignore_record    -> function to determine if OE record should be skipped
         """
+        # logging
+        self._logger = getLogger(self.__class__.__name__)
+        self._logger.info('%s.__init__', self.__class__.__name__)
+        #
         self.dryrun = DRYRUN
         self.erp = connect
         self.config = config
@@ -294,6 +299,7 @@ class Synchronize(SynchronizeABC):
         """
         split records into changed, added, and deleted groups
         """
+        self._logger.info('categorizing')
         print('categorizing...')
         print('fis record keys: %r\noe record keys:  %r' % (self.fis_records.keys(), self.oe_records.keys()), verbose=3)
         all_keys = set(list(self.fis_records.keys()) + list(self.oe_records.keys()))
@@ -368,6 +374,7 @@ class Synchronize(SynchronizeABC):
         - vice versa
         - all used FIS fields transformable
         """
+        self._logger.info('check_integrity')
         errors = {}
         # load fis records
         fis_dupes = {}
@@ -524,6 +531,7 @@ class Synchronize(SynchronizeABC):
         """
         close file and delete if empty
         """
+        self._logger.info('close_dbf_log(): %d entries', len(self.record_log))
         self.record_log.close()
         if not self.record_log:
             table = Path(self.record_log.filename)
@@ -547,6 +555,7 @@ class Synchronize(SynchronizeABC):
         field names come from the class
         field specs come from the model
         """
+        self._logger.info('create_dbf_log')
         # create dbf log file
         path = Path(os.environ.get('VIRTUAL_ENV') or '')
         if path:
@@ -601,6 +610,7 @@ class Synchronize(SynchronizeABC):
         """
         load entire FIS table
         """
+        self._logger.info('fis_long_load')
         self.open_fis_tables()
         print(self.fis_table.filename, verbose=2)
         print('loading current FIS data...', end=' ')
@@ -622,6 +632,7 @@ class Synchronize(SynchronizeABC):
                       )
         print('%d records retrieved' % len(self.fis_records))
         if len(self.fis_records) == 0:
+            print('aborting conversion of %s' % self.__class__.__name__)
             raise ValueError('no valid records found in %s' % self.__class__.__name__)
         print('  ', '\n   '.join(str(r) for r in self.fis_records.values()), verbose=3)
         return None
@@ -630,6 +641,7 @@ class Synchronize(SynchronizeABC):
         """
         load all FIS records that have changes
         """
+        self._logger.info('fis_quick_load')
         self.open_fis_tables()
         print(self.fis_table.filename, verbose=2)
         print(self.old_fis_table.filename, verbose=2)
@@ -702,6 +714,7 @@ class Synchronize(SynchronizeABC):
         key, if not specified, defaults to all the key fields for that table
         return changed, added, and deleted records
         """
+        self._logger.info('get_fis_changes')
         # get changed records as list of
         # (old_record, new_record, [(enum_schema_member, old_value, new_value), (...), ...]) tuples
         try:
@@ -865,6 +878,7 @@ class Synchronize(SynchronizeABC):
 
         method can be 'quick' or 'full', which subclasses may make use of
         """
+        self._logger.info('normalize_fis')
         print('normalizing...')
         if not(self.fis_records):
             return
@@ -944,6 +958,7 @@ class Synchronize(SynchronizeABC):
         """
         copy appropriate data from oe records to matching fis records
         """
+        self._logger.info('normalize_records')
         fis_rec.id = oe_rec.id
         fis_rec._imd = oe_rec._imd
 
@@ -952,6 +967,7 @@ class Synchronize(SynchronizeABC):
         load oe records using ir.model.data
         restrict by names
         """
+        self._logger.info('oe_load_data')
         print('loading OE data...', end=' ')
         if xid_names:
             domain = [
@@ -991,6 +1007,7 @@ class Synchronize(SynchronizeABC):
         print('%d records retrieved' % len(self.oe_records))
 
     def open_fis_tables(self):
+        self._logger.info('open_fis_tables')
         self.fis_table = self.get_fis_table(self.TN, rematch=self.RE)
         self.old_fis_table = self.get_fis_table(
                 self.TN,
@@ -1002,6 +1019,7 @@ class Synchronize(SynchronizeABC):
         """
         create new records in OE
         """
+        self._logger.info('record_additions')
         for key, rec in ViewProgress(
                 sorted(self.new_records.items()),
                 message='adding $total records...',
@@ -1054,6 +1072,7 @@ class Synchronize(SynchronizeABC):
         """
         commit all changes to OE
         """
+        self._logger.info('record_changes')
         for changes, records in ViewProgress(
                 self.changed_records.items(),
                 message='recording $total change groups...',
@@ -1097,6 +1116,7 @@ class Synchronize(SynchronizeABC):
         """
         remove all deletions from OE
         """
+        self._logger.info('record_deletions')
         # try the fast method first
         try:
             action = ('delete','deactivate')['active' in self.OE_FIELDS]
@@ -1148,6 +1168,7 @@ class Synchronize(SynchronizeABC):
         """
         generate all XmlLinks, and attach OE fields to them
         """
+        self._logger.info('reify')
         target_fields = set(fields + ['id', self.OE_KEY])
         if FIS_MODULE and FIS_MODULE in self.OE_FIELDS:
             target_fields.add(FIS_MODULE)
@@ -1164,6 +1185,7 @@ class Synchronize(SynchronizeABC):
             link = self.XmlLink(rec[self.OE_KEY], rec.id)
             for f in fields:
                 setattr(link, f, rec[f])
+            self._logger.debug('%r', link)
 
     def run(self, method):
         #
@@ -1171,6 +1193,7 @@ class Synchronize(SynchronizeABC):
         # - quick -> old fis file
         # - full -> current OpenERP data
         #
+        self._logger.info('run')
         print('=' * 80)
         self.method = method
         self.create_dbf_log()
@@ -1220,6 +1243,7 @@ class Synchronize(SynchronizeABC):
             self.close_dbf_log()
 
     def update_imd(self):
+        self._logger.info('update_imd')
         updated = 0
         skipped = 0
         self.oe_load_data()
